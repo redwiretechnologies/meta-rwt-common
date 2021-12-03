@@ -1,0 +1,46 @@
+From 208235391e3d895880b607cfb882ef6a0feef3c8 Mon Sep 17 00:00:00 2001
+From: Toby Flynn <tflynn@redwiretechnology.com>
+Date: Tue, 5 Mar 2019 11:19:53 -0500
+Subject: [PATCH] adding cpufreq for zynq
+
+---
+ arch/arm/mach-zynq/Kconfig  | 2 ++
+ arch/arm/mach-zynq/common.c | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/arch/arm/mach-zynq/Kconfig b/arch/arm/mach-zynq/Kconfig
+index 29b657acd72a..6438204dda60 100644
+--- a/arch/arm/mach-zynq/Kconfig
++++ b/arch/arm/mach-zynq/Kconfig
+@@ -6,6 +6,8 @@ config ARCH_ZYNQ
+ 	select ARCH_SUPPORTS_BIG_ENDIAN
+ 	select ARM_AMBA
+ 	select ARM_GIC
++	select ARCH_HAS_CPUFREQ
++	select ARCH_HAS_OPP
+ 	select ARM_GLOBAL_TIMER if !CPU_FREQ
+ 	select CADENCE_TTC_TIMER
+ 	select HAVE_ARM_SCU if SMP
+diff --git a/arch/arm/mach-zynq/common.c b/arch/arm/mach-zynq/common.c
+index 0ed8590bf8aa..21f9334c295a 100644
+--- a/arch/arm/mach-zynq/common.c
++++ b/arch/arm/mach-zynq/common.c
+@@ -111,6 +111,7 @@ static void __init zynq_init_late(void)
+  */
+ static void __init zynq_init_machine(void)
+ {
++    struct platform_device_info devinfo = { .name = "cpufreq-cpu0", };
+ 	struct soc_device_attribute *soc_dev_attr;
+ 	struct soc_device *soc_dev;
+ 	struct device *parent = NULL;
+@@ -145,6 +146,7 @@ static void __init zynq_init_machine(void)
+ 	of_platform_default_populate(NULL, NULL, parent);
+ 
+ 	platform_device_register(&zynq_cpuidle_device);
++    platform_device_register_full(&devinfo);
+ }
+ 
+ static void __init zynq_timer_init(void)
+-- 
+2.17.1
+

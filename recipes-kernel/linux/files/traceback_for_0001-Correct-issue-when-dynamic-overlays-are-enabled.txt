@@ -1,0 +1,22 @@
+OF: ERROR: Bad of_node_put() on /amba/spi@e0006000/ad9361-phy@0/ad9361_rx_ant_port_c
+CPU: 0 PID: 1 Comm: swapper/0 Not tainted 4.14.0 #1
+Hardware name: Xilinx Zynq Platform
+[<c010ef54>] (unwind_backtrace) from [<c010b844>] (show_stack+0x10/0x14)
+[<c010b844>] (show_stack) from [<c069ca40>] (dump_stack+0x8c/0xa0)
+[<c069ca40>] (dump_stack) from [<c06a081c>] (kobject_put+0x94/0xe4)
+[<c06a081c>] (kobject_put) from [<c0530c60>] (of_phandle_iterator_next+0x24/0x144)
+[<c0530c60>] (of_phandle_iterator_next) from [<c0564280>] (ad9361_parse_setting_seq+0xa8/0x140)
+[<c0564280>] (ad9361_parse_setting_seq) from [<c0564194>] (ad9361_parse_setting+0x104/0x148)
+[<c0564194>] (ad9361_parse_setting) from [<c0564398>] (ad9361_populate_settings+0x80/0x18c)
+[<c0564398>] (ad9361_populate_settings) from [<c0564678>] (ad9361_register_ext_band_control+0x1d4/0x224)
+[<c0564678>] (ad9361_register_ext_band_control) from [<c0560fe0>] (ad9361_probe+0x1a88/0x23f4)
+[<c0560fe0>] (ad9361_probe) from [<c040b7e0>] (spi_drv_probe+0x7c/0xa8)
+[<c040b7e0>] (spi_drv_probe) from [<c03b0e64>] (driver_probe_device+0x238/0x2e8)
+[<c03b0e64>] (driver_probe_device) from [<c03b0fb8>] (__driver_attach+0xa4/0xa8)
+[<c03b0fb8>] (__driver_attach) from [<c03af3b8>] (bus_for_each_dev+0x4c/0x9c)
+[<c03af3b8>] (bus_for_each_dev) from [<c03b03c0>] (bus_add_driver+0x188/0x20c)
+[<c03b03c0>] (bus_add_driver) from [<c03b1860>] (driver_register+0x78/0xf4)
+[<c03b1860>] (driver_register) from [<c0101a20>] (do_one_initcall+0x44/0x168)
+[<c0101a20>] (do_one_initcall) from [<c0a00db8>] (kernel_init_freeable+0x144/0x1d0)
+[<c0a00db8>] (kernel_init_freeable) from [<c06b0560>] (kernel_init+0x8/0x110)
+[<c06b0560>] (kernel_init) from [<c0107b90>] (ret_from_fork+0x14/0x24)

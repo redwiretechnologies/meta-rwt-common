@@ -1,0 +1,25 @@
+From 9bfe61512aa345e5318720fdae26b7a5990ff968 Mon Sep 17 00:00:00 2001
+From: Toby Flynn <tflynn@redwiretechnology.com>
+Date: Fri, 19 Jul 2019 10:38:20 -0400
+Subject: [PATCH] readd relative python path
+
+---
+ gnuradio-runtime/swig/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/gnuradio-runtime/swig/CMakeLists.txt b/gnuradio-runtime/swig/CMakeLists.txt
+index bade4beeaa..7cd2bc4fd0 100644
+--- a/gnuradio-runtime/swig/CMakeLists.txt
++++ b/gnuradio-runtime/swig/CMakeLists.txt
+@@ -62,7 +62,7 @@ GR_SWIG_MAKE(runtime_swig runtime_swig.i)
+ install(
+   TARGETS runtime_swig
+   EXPORT runtime_swig-export
+-  DESTINATION ${GR_PYTHON_DIR}/gnuradio/gr
++  DESTINATION ${GR_PYTHON_RELATIVE}/gnuradio/gr
+   )
+ 
+ include(GrPython)
+-- 
+2.17.1
+

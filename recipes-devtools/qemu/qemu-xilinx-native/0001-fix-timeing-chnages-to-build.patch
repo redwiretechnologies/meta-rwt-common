@@ -1,0 +1,54 @@
+From 24f52c7e8a1f4274bed35935c247795ecf6f21e0 Mon Sep 17 00:00:00 2001
+From: tflynn <tflynn@redwiretechnologies.us>
+Date: Fri, 27 Aug 2021 08:57:35 -0400
+Subject: [PATCH] fix timeing chnages to build
+
+---
+ configure            | 6 +++---
+ linux-user/syscall.c | 8 +++++---
+ 2 files changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/configure b/configure
+index 1bc699ae89..2cdebec2ea 100755
+--- a/configure
++++ b/configure
+@@ -2580,7 +2580,7 @@ has_libgcrypt_config() {
+ 
+     if test -n "$cross_prefix"
+     then
+-	host=$(libgcrypt-config --host)
++	host=$(pkg-config libgcrypt --host)
+ 	if test "$host-" != $cross_prefix
+ 	then
+ 	    return 1
+@@ -2592,8 +2592,8 @@ has_libgcrypt_config() {
+ 
+ if test "$gcrypt" != "no"; then
+     if has_libgcrypt_config; then
+-        gcrypt_cflags=$(libgcrypt-config --cflags)
+-        gcrypt_libs=$(libgcrypt-config --libs)
++        gcrypt_cflags=$(pkg-config libgcrypt --cflags)
++        gcrypt_libs=$(pkg-config libgcrypt --libs)
+         # Debian has remove -lgpg-error from libgcrypt-config
+         # as it "spreads unnecessary dependencies" which in
+         # turn breaks static builds...
+diff --git a/linux-user/syscall.c b/linux-user/syscall.c
+index 464c3b9c12..a766aa63bd 100644
+--- a/linux-user/syscall.c
++++ b/linux-user/syscall.c
+@@ -8180,10 +8180,12 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
+ #ifdef TARGET_NR_stime /* not on alpha */
+     case TARGET_NR_stime:
+         {
+-            time_t host_time;
+-            if (get_user_sal(host_time, arg1))
++	    struct timespec ts;
++	    ts.tv_nsec = 0;
++	    if (get_user_sal(ts.tv_sec, arg1)) {
+                 goto efault;
+-            ret = get_errno(stime(&host_time));
++	    }
++            return get_errno(clock_settime(CLOCK_REALTIME, &ts));
+         }
+         break;
+ #endif

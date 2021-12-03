@@ -1,0 +1,30 @@
+From 63a1ec1973d68643775fd5c9bbd28558363b6a1f Mon Sep 17 00:00:00 2001
+From: bellma <bellma@nowhere>
+Date: Fri, 8 Feb 2019 14:53:12 -0500
+Subject: [PATCH] Correct clk prepare issue
+
+---
+ fclkcfg.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/fclkcfg.c b/fclkcfg.c
+index 92556df..a0fc05e 100644
+--- a/fclkcfg.c
++++ b/fclkcfg.c
+@@ -287,6 +287,13 @@ static int fclkcfg_platform_driver_probe(struct platform_device *pdev)
+     }    
+     dev_dbg(&pdev->dev, "of_clk_get(0) done.\n");
+ 
++    dev_dbg(&pdev->dev, "handle case when previously enabled.\n");
++    {
++        if (__clk_is_enabled(this->clk)) {
++            clk_prepare_enable(this->clk);
++        }
++    }
++
+     /*
+      * get device name
+      */
+-- 
+2.17.1
+

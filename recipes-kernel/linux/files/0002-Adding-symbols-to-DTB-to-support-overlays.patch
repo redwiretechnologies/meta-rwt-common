@@ -1,0 +1,24 @@
+From c7dead69deb7bbd11cd87e03f34bf83b03b1504d Mon Sep 17 00:00:00 2001
+From: bellma <bellma@nowhere>
+Date: Mon, 4 Mar 2019 12:45:30 -0500
+Subject: [PATCH] Adding symbols to DTB to support overlays.
+
+---
+ scripts/Makefile.lib | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
+index 04b5633df1cf..8ab23342eb8a 100644
+--- a/scripts/Makefile.lib
++++ b/scripts/Makefile.lib
+@@ -285,6 +285,7 @@ DTC_FLAGS += -Wnode_name_chars_strict \
+ 	-Wproperty_name_chars_strict
+ endif
+ 
++DTC_FLAGS += -@
+ DTC_FLAGS += $(DTC_FLAGS_$(basetarget))
+ 
+ # Generate an assembly file to wrap the output of the device tree compiler
+-- 
+2.17.1
+

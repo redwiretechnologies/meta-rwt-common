@@ -1,0 +1,22 @@
+This folder contains recipes common code required to build for the RWT platforms.
+
+Dependencies
+============
+
+This layer depends on:
+
+  URI = git://git.yoctoproject.org/poky/
+  layers = meta meta-poky
+  branch = zeus
+
+  URI = git://github.com/openembedded/meta-openembedded
+  layers = meta-oe meta-python meta-networking meta-filesystems
+  branch = zeus
+
+  URI = git://github.com/meta-qt5/meta-qt5
+  layers = meta-qt5
+  branch = zeus
+
+  URI = git://github.com/balister/meta-sdr
+  layers = meta-sdr
+  branch = zeus

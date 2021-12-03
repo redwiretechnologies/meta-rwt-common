@@ -1,0 +1,21 @@
+From 6254601033a64010019b1e501351b12d7710ee45 Mon Sep 17 00:00:00 2001
+From: tflynn <tflynn@redwiretechnologies.us>
+Date: Fri, 27 Aug 2021 08:53:19 -0400
+Subject: [PATCH] add auto ethernet for g-ether
+
+---
+ data/85-nm-unmanaged.rules | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/data/85-nm-unmanaged.rules b/data/85-nm-unmanaged.rules
+index 20f4d29..4fe0fce 100644
+--- a/data/85-nm-unmanaged.rules
++++ b/data/85-nm-unmanaged.rules
+@@ -32,6 +32,6 @@ ATTR{address}=="02:42:*", ENV{INTERFACE}=="docker[0-9]*", ENV{NM_UNMANAGED}="1"
+ # USB gadget device. Unmanage by default, since whatever created it
+ # might want to set it up itself (e.g. activate an ipv4.method=shared
+ # connection).
+-ENV{DEVTYPE}=="gadget", ENV{NM_UNMANAGED}="1"
++ENV{DEVTYPE}=="gadget", ENV{NM_UNMANAGED}="0"
+ 
+ LABEL="nm_unmanaged_end"
