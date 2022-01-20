@@ -12,7 +12,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     packagegroup-sdr-base-python \
     gnuradio \
     ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'xauth', '', d)} \
-    gr-iio \
     libiio-tests \
     libiio-iiod \
     i2c-tools \
@@ -26,7 +25,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     iptables \
     networkmanager \
     networkmanager-nmtui \
-    python-networkmanager \
+    python3-networkmanager \
     libmbim \
     libqmi \
     modemmanager \
@@ -45,6 +44,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     lmsensors-sensorsconfconvert \
     lmsensors-sensorsdetect \
     libgpiod \
+    libgpiod-tools \
     python3-six \
     bitfiles-griio \
     bitfiles-default \
