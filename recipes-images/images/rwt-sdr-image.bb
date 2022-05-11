@@ -54,6 +54,9 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     ttf-dejavu-serif-condensed \
     ttf-dejavu-common \
     fontconfig \
+    openssh-sftp \
+    openssh-sftp-server \
+    openssh \
 "
 
 inherit core-image
