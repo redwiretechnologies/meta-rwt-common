@@ -27,4 +27,3 @@ index d0c8fa2..8479e70 100644
          math(EXPR _CMAKE_BITS "${CMAKE_SIZEOF_VOID_P} * 8")
 -- 
 2.25.4
-
