@@ -3,7 +3,7 @@ HOMEPAGE = "https://github.com/redwiretechnologies/gr-rwt"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-DEPENDS ="swig-native swig gnuradio libiio libad9361-iio python3 cppunit libgpiod python3-pybind11-native"
+DEPENDS ="gnuradio libiio libad9361-iio python3 cppunit libgpiod python3-pybind11-native python3-native python3-numpy-native"
 RDEPENDS_${PN} = "gnuradio python3-click"
 
 inherit setuptools3 cmake pkgconfig
@@ -14,7 +14,7 @@ export HOST_SYS="${MULTIMACH_TARGET_SYS}"
 S="${WORKDIR}/git"
 
 SRC_URI = "git://github.com/redwiretechnologies/gr-rwt.git;branch=maint-3.10;protocol=https"
-SRCREV = "551e320e031ff826bc5af4cc5809c9c6433b8991"
+SRCREV = "890633446e409be6822c69dfaf04e7e991de4ce8"
 
 
 EXTRA_OECMAKE = " \
