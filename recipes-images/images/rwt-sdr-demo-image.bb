@@ -59,6 +59,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     python3-colorama \
     gqrx \
     soapysdr \
+    python3-click \
 "
 
 inherit core-image

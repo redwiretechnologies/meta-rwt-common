@@ -24,4 +24,4 @@ CORE_IMAGE_EXTRA_INSTALL += "\
 
 IMAGE_INSTALL = "packagegroup-core-boot ${CORE_IMAGE_EXTRA_INSTALL}"
 IMAGE_LINGUAS = " "
-inherit core-image
+inherit core-image  image-buildinfo

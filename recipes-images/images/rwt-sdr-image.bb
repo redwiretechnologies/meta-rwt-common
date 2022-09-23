@@ -5,6 +5,7 @@ LICENSE = "MIT"
 IMAGE_FEATURES += "splash ssh-server-openssh debug-tweaks "
 EXTRA_IMAGE_FEATURES += "tools-debug tools-profile tools-sdk dev-pkgs package-management"
 
+
 CORE_IMAGE_EXTRA_INSTALL += "\
     packagegroup-sdr-base-extended \
     packagegroup-sdr-base-debug \
@@ -57,6 +58,10 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     openssh-sftp \
     openssh-sftp-server \
     openssh \
+    gr-adsb \
+    python3-click \
+    python3-click-plugins \
+    python3-tinydb \
 "
 
-inherit core-image
+inherit core-image image-buildinfo
