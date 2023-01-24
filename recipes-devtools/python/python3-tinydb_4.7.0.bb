@@ -9,4 +9,4 @@ SRC_URI[sha256sum] = "357eb7383dee6915f17b00596ec6dd2a890f3117bf52be28a4c516aeee
 
 PYPI_PACKAGE = "tinydb"
 inherit pypi setuptools3
-RDEPENDS_${PN} += "python3-core python3-six python3-debugger"
+RDEPENDS:${PN} += "python3-core python3-six python3-debugger"

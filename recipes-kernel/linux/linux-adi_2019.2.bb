@@ -5,7 +5,7 @@ DEPENDS = "linux-firmware"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://COPYING;md5=bbea815ee2795b2f4230826c0c6b8814"
 
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 # This version extension should match CONFIG_LOCALVERSION in defconfig
 LINUX_VERSION_EXTENSION = ""

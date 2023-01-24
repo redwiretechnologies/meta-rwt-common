@@ -5,9 +5,9 @@ do_install() {
     install -m 0644 ${WORKDIR}/30-dejavu-aliases.conf ${D}${sysconfdir}/fonts/conf.d/
 }
 
-FILES_${PN}-sans            = "${libdir}/fonts/DejaVuSans.ttf ${libdir}/fonts/DejaVuSans-*.ttf"
-FILES_${PN}-sans-mono       = "${libdir}/fonts/DejaVuSansMono*.ttf"
-FILES_${PN}-sans-condensed  = "${libdir}/fonts/DejaVuSansCondensed*.ttf"
-FILES_${PN}-serif           = "${libdir}/fonts/DejaVuSerif.ttf ${libdir}/fonts/DejaVuSerif-*.ttf"
-FILES_${PN}-serif-condensed = "${libdir}/fonts/DejaVuSerifCondensed*.ttf"
-FILES_${PN}-mathtexgyre     = "${libdir}/fonts/DejaVuMathTeXGyre.ttf"
+FILES:${PN}-sans            = "${libdir}/fonts/DejaVuSans.ttf ${libdir}/fonts/DejaVuSans-*.ttf"
+FILES:${PN}-sans-mono       = "${libdir}/fonts/DejaVuSansMono*.ttf"
+FILES:${PN}-sans-condensed  = "${libdir}/fonts/DejaVuSansCondensed*.ttf"
+FILES:${PN}-serif           = "${libdir}/fonts/DejaVuSerif.ttf ${libdir}/fonts/DejaVuSerif-*.ttf"
+FILES:${PN}-serif-condensed = "${libdir}/fonts/DejaVuSerifCondensed*.ttf"
+FILES:${PN}-mathtexgyre     = "${libdir}/fonts/DejaVuMathTeXGyre.ttf"

@@ -1,11 +1,11 @@
-SRCREV := "3535be30e20298b810ee0b81baed7be30e5fb3cd"
+SRCREV := "07722d5b23d6ff0d5c75c28d9d96d1a23cabd969"
 KBRANCH := "master"
-LINUX_VERSION := "5.4"
+LINUX_VERSION := "5.10"
 DEPENDS = "linux-firmware"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://COPYING;md5=bbea815ee2795b2f4230826c0c6b8814"
 
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 # This version extension should match CONFIG_LOCALVERSION in defconfig
 LINUX_VERSION_EXTENSION = ""

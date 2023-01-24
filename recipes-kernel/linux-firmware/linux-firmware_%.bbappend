@@ -1,6 +1,6 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI_append = " \
+SRC_URI:append = " \
     file://ad9467_intbypass_ad9517.stp \
     file://ad9517.stp \
     file://ad9517_fmcomms6.stp \
@@ -12,7 +12,7 @@ SRC_URI_append = " \
 
 SRC_URI[ad9467_intbypass_ad9517.stp.md5sum]="4d4e72b52f0cf5cd61186d5055d785c0"
 
-do_install_append() {
+do_install:append() {
     install -d ${D}/lib/firmware/
     install -m 0755 ${WORKDIR}/ad9467_intbypass_ad9517.stp \
                     ${WORKDIR}/ad9517.stp \

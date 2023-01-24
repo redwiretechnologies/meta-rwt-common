@@ -15,4 +15,4 @@ PYPI_PACKAGE = "bokeh"
 inherit pypi setuptools3
 
 BBCLASSEXTEND = "native"
-RDEPENDS_${PN}_class-native = ""
+RDEPENDS:${PN}_class-native = ""

@@ -9,4 +9,4 @@ SRC_URI[sha256sum] = "46ab999744a9d831159c3411bb0c79346d94a444df9a3a3742e9ed6364
 
 PYPI_PACKAGE = "click-plugins"
 inherit pypi setuptools3
-RDEPENDS_${PN} += "python3-core python3-six python3-debugger python3-click"
+RDEPENDS:${PN} += "python3-core python3-six python3-debugger python3-click"

@@ -9,4 +9,4 @@ SRC_URI[sha256sum] = "dba314dffd35ed05300a14056ef6b4e801260b233126edee9dc9107a25
 
 PYPI_PACKAGE = "enocean"
 inherit pypi setuptools3
-RDEPENDS_${PN} += "python3-core python3-pyserial python3-debugger python3-beautifulsoup4"
+RDEPENDS:${PN} += "python3-core python3-pyserial python3-debugger python3-beautifulsoup4"

@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=6e83d63de93384e6cce0fd3632041d91"
 
 inherit module
 
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRCREV = "8a6fa423754941779fc01222bf710080adea8e17"
 SRC_URI = "git://github.com/ikwzm/fclkcfg.git;protocol=https \
