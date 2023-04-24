@@ -1,0 +1,5 @@
+PACKAGECONFIG = " network_backend serial_backend xml_backend libiio-python3"
+SRC_URI = "git://github.com/analogdevicesinc/libiio.git;protocol=https;branch=master "
+SRCREV = "c0f55139d0b46998af5d6f36027570cf8ede138a"
+PV = "0.24"
+DEPENDS:append = " libusb1"

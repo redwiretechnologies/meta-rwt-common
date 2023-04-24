@@ -4,16 +4,14 @@ LINUX_VERSION_EXTENSION ?= "-xilinx-${XILINX_RELEASE_VERSION}"
 PV = "${LINUX_VERSION}${LINUX_VERSION_EXTENSION}+git${SRCPV}"
 
 # Sources, by default allow for the use of SRCREV pointing to orphaned tags/commits
-KBRANCH ?= "master"
+KBRANCH ?= "kirstone"
 SRCBRANCHARG = "${@['nobranch=1', 'branch=${KBRANCH}'][d.getVar('KBRANCH', True) != '']}"
 
 FILESOVERRIDES:append = ":${XILINX_RELEASE_VERSION}"
-KERNELURI ?= "git://github.com/analogdevicesinc/linux.git;protocol=https"
+KERNELURI ?= "git://github.com/redwiretechnologies/linux-adi.git;protocol=https"
 YOCTO_META ?= "git://git.yoctoproject.org/yocto-kernel-cache;type=kmeta;name=meta;branch=yocto-5.10;destsuffix=yocto-kmeta"
 SRC_URI = "${KERNELURI};${SRCBRANCHARG} \
            file://dt-overlay.cfg \
-           file://0002-Adding-symbols-to-DTB-to-support-overlays.patch \
-	   file://0004-arm-zynq-Add-support-for-cpufreq.patch \
 	   ${YOCTO_META} \
 	   "
 

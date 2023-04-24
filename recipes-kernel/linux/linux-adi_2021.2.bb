@@ -1,5 +1,5 @@
-SRCREV := "07722d5b23d6ff0d5c75c28d9d96d1a23cabd969"
-KBRANCH := "master"
+SRCREV := "dc89245bec2ef48dac8070604e249ef19b9cbb2f"
+KBRANCH := "kirkstone"
 LINUX_VERSION := "5.10"
 DEPENDS = "linux-firmware"
 LICENSE = "GPLv2"
