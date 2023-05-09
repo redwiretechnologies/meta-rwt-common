@@ -47,6 +47,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     libgpiod \
     libgpiod-tools \
     python3-six \
+    python3-smbus \
     bitfiles-griio \
     bitfiles-default \
     ttf-dejavu-sans \
