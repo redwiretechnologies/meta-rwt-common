@@ -1,0 +1,940 @@
+From bbcc88cbd584a5995caa5e1ff29b8a84a9cba6b8 Mon Sep 17 00:00:00 2001
+From: OpenEmbedded <tflynn@redwiretechnology.com>
+Date: Tue, 8 Aug 2023 15:20:31 -0400
+Subject: [PATCH] backport updates to ad9361 drivers
+
+---
+ drivers/iio/adc/ad9361.c               | 197 ++++++++++++++-----------
+ drivers/iio/adc/ad9361.h               |   3 +
+ drivers/iio/adc/ad9361_ext_band_ctrl.c |  20 ++-
+ drivers/iio/adc/cf_axi_adc.h           |   7 +
+ drivers/iio/adc/cf_axi_adc_core.c      |  69 +++++----
+ 5 files changed, 173 insertions(+), 123 deletions(-)
+
+diff --git a/drivers/iio/adc/ad9361.c b/drivers/iio/adc/ad9361.c
+index 4adde81d8..61692432d 100644
+--- a/drivers/iio/adc/ad9361.c
++++ b/drivers/iio/adc/ad9361.c
+@@ -4572,7 +4572,7 @@ static int ad9361_fastlock_store(struct ad9361_rf_phy *phy, bool tx, u32 profile
+ 	/* Wide BW option: N = 1
+ 	 * Set init and steady state values to the same - let user space handle it
+ 	 */
+-	val[6] = (x << 3) | y;
++	val[6] = (x << 6) | y;
+ 	val[7] = y;
+ 
+ 	x = ad9361_spi_readf(spi, REG_RX_LOOP_FILTER_3 + offs, LOOP_FILTER_R3(~0));
+@@ -4939,6 +4939,11 @@ static unsigned long ad9361_ref_div_sel(unsigned long refin_Hz, unsigned long ma
+ 		return 0;
+ }
+ 
++static void ad9361_clk_disable(void *clk)
++{
++	clk_disable_unprepare(clk);
++}
++
+ static int ad9361_setup(struct ad9361_rf_phy *phy)
+ {
+ 	struct ad9361_rf_phy_state *st = phy->state;
+@@ -5005,6 +5010,10 @@ static int ad9361_setup(struct ad9361_rf_phy *phy)
+ 	if (ret < 0)
+ 		return ret;
+ 
++	ret = devm_add_action_or_reset(dev, ad9361_clk_disable, phy->clk_refin);
++	if (ret)
++		return ret;
++
+ 	ret = clk_set_rate(phy->clks[BB_REFCLK], ref_freq);
+ 	if (ret < 0) {
+ 		dev_err(dev, "Failed to set BB ref clock rate (%d)\n",
+@@ -5104,6 +5113,10 @@ static int ad9361_setup(struct ad9361_rf_phy *phy)
+ 	if (ret < 0)
+ 		return ret;
+ 
++	ret = devm_add_action_or_reset(dev, ad9361_clk_disable, phy->clks[RX_RFPLL]);
++	if (ret)
++		return ret;
++
+ 	/* Skip quad cal here we do it later again */
+ 	st->last_tx_quad_cal_freq = pd->tx_synth_freq;
+ 	ret = clk_set_rate(phy->clks[TX_RFPLL], ad9361_to_clk(pd->tx_synth_freq));
+@@ -5117,6 +5130,10 @@ static int ad9361_setup(struct ad9361_rf_phy *phy)
+ 	if (ret < 0)
+ 		return ret;
+ 
++	ret = devm_add_action_or_reset(dev, ad9361_clk_disable, phy->clks[TX_RFPLL]);
++	if (ret)
++		return ret;
++
+ 	clk_set_parent(phy->clks[RX_RFPLL],
+ 			pd->use_ext_rx_lo ? phy->clk_ext_lo_rx :
+ 			phy->clks[RX_RFPLL_INT]);
+@@ -6598,6 +6615,20 @@ static int ad9361_clks_resync(struct ad9361_rf_phy *phy)
+ 	return 0;
+ }
+ 
++static void ad9361_unregister_rx_notifier(void *data)
++{
++	struct ad9361_rf_phy *phy = data;
++
++	clk_notifier_unregister(phy->clks[RX_RFPLL], &phy->clk_nb_rx);
++}
++
++static void ad9361_unregister_tx_notifier(void *data)
++{
++	struct ad9361_rf_phy *phy = data;
++
++	clk_notifier_unregister(phy->clks[TX_RFPLL], &phy->clk_nb_tx);
++}
++
+ static int register_clocks(struct ad9361_rf_phy *phy)
+ {
+ 	const char *parent_name;
+@@ -6705,11 +6736,19 @@ static int register_clocks(struct ad9361_rf_phy *phy)
+ 	if (ret < 0)
+ 		return ret;
+ 
++	ret = devm_add_action_or_reset(&phy->spi->dev, ad9361_unregister_rx_notifier, phy);
++	if (ret)
++		return ret;
++
+ 	phy->clk_nb_tx.notifier_call = ad9361_tx_rfpll_rate_change;
+ 	ret = clk_notifier_register(phy->clks[TX_RFPLL], &phy->clk_nb_tx);
+ 	if (ret < 0)
+ 		return ret;
+ 
++	ret = devm_add_action_or_reset(&phy->spi->dev, ad9361_unregister_tx_notifier, phy);
++	if (ret)
++		return ret;
++
+ 	return 0;
+ }
+ 
+@@ -6757,7 +6796,7 @@ static ssize_t ad9361_phy_store(struct device *dev,
+ 		this_attr->address != AD9361_ENSM_MODE)
+ 		return -EINVAL;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&phy->lock);
+ 
+ 	switch ((u32)this_attr->address) {
+ 	case AD9361_RF_RX_BANDWIDTH:
+@@ -7018,7 +7057,7 @@ static ssize_t ad9361_phy_store(struct device *dev,
+ 		ret = -EINVAL;
+ 	}
+ 
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&phy->lock);
+ 
+ 	return ret ? ret : len;
+ }
+@@ -7035,7 +7074,7 @@ static ssize_t ad9361_phy_show(struct device *dev,
+ 	unsigned long clk[6];
+ 	u64 delta;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&phy->lock);
+ 	switch ((u32)this_attr->address) {
+ 	case AD9361_RF_RX_BANDWIDTH:
+ 		ret = sprintf(buf, "%u\n", st->current_rx_bw_Hz);
+@@ -7153,7 +7192,7 @@ static ssize_t ad9361_phy_show(struct device *dev,
+ 	default:
+ 		ret = -EINVAL;
+ 	}
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&phy->lock);
+ 
+ 	return ret;
+ }
+@@ -7324,14 +7363,14 @@ static int ad9361_phy_reg_access(struct iio_dev *indio_dev,
+ 	struct ad9361_rf_phy *phy = iio_priv(indio_dev);
+ 	int ret;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&phy->lock);
+ 	if (readval == NULL) {
+ 		ret = ad9361_spi_write(phy->spi, reg, writeval);
+ 	} else {
+ 		*readval =  ad9361_spi_read(phy->spi, reg);
+ 		ret = 0;
+ 	}
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&phy->lock);
+ 
+ 	return ret;
+ }
+@@ -7384,7 +7423,7 @@ static ssize_t ad9361_phy_lo_write(struct iio_dev *indio_dev,
+ 			break;
+ 	}
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&phy->lock);
+ 	switch (private) {
+ 	case LOEXT_FREQ:
+ 		switch (chan->channel) {
+@@ -7480,7 +7519,7 @@ static ssize_t ad9361_phy_lo_write(struct iio_dev *indio_dev,
+ 
+ 		break;
+ 	}
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&phy->lock);
+ 
+ 	return ret ? ret : len;
+ }
+@@ -7496,7 +7535,7 @@ static ssize_t ad9361_phy_lo_read(struct iio_dev *indio_dev,
+ 	size_t len;
+ 	int ret = 0;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&phy->lock);
+ 	switch (private) {
+ 	case LOEXT_FREQ:
+ 		val = ad9361_from_clk(clk_get_rate(phy->clks[chan->channel ?
+@@ -7513,7 +7552,7 @@ static ssize_t ad9361_phy_lo_read(struct iio_dev *indio_dev,
+ 			len += sprintf(buf + len, "%u%c", faslock_vals[i],
+ 				       i == 15 ? '\n' : ',');
+ 
+-		mutex_unlock(&indio_dev->mlock);
++		mutex_unlock(&phy->lock);
+ 		return len;
+ 		}
+ 	case LOEXT_RECALL:
+@@ -7553,14 +7592,14 @@ static ssize_t ad9361_phy_lo_read(struct iio_dev *indio_dev,
+ 		}
+ 
+ 		len = sprintf(buf, "[%llu 1 %llu]\n", min, max);
+-		mutex_unlock(&indio_dev->mlock);
++		mutex_unlock(&phy->lock);
+ 		return len;
+ 		}
+ 	default:
+ 		ret = 0;
+ 
+ 	}
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&phy->lock);
+ 
+ 	return ret < 0 ? ret : sprintf(buf, "%llu\n", val);
+ }
+@@ -7690,7 +7729,7 @@ static ssize_t ad9361_phy_rx_write(struct iio_dev *indio_dev,
+ 				    const struct iio_chan_spec *chan,
+ 				    const char *buf, size_t len)
+ {
+-//	struct ad9361_rf_phy *phy = iio_priv(indio_dev);
++	struct ad9361_rf_phy *phy = iio_priv(indio_dev);
+ 	u64 readin;
+ 	int ret = 0;
+ 
+@@ -7698,7 +7737,7 @@ static ssize_t ad9361_phy_rx_write(struct iio_dev *indio_dev,
+ 	if (ret)
+ 		return ret;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&phy->lock);
+ 	switch (chan->channel) {
+ 	case 0:
+ 
+@@ -7712,7 +7751,7 @@ static ssize_t ad9361_phy_rx_write(struct iio_dev *indio_dev,
+ 		ret = -EINVAL;
+ 		ret = 0;
+ 	}
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&phy->lock);
+ 
+ 	return ret ? ret : len;
+ }
+@@ -7727,14 +7766,14 @@ static ssize_t ad9361_phy_rx_read(struct iio_dev *indio_dev,
+ 	int val;
+ 	int ret = 0;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&phy->lock);
+ 
+ 	rssi.ant = ad9361_1rx1tx_channel_map(phy, false, chan->channel + 1);
+ 	rssi.duration = 1;
+ 	ret = ad9361_read_rssi(phy, &rssi);
+ 	val = rssi.symbol;
+ 
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&phy->lock);
+ 
+ 	return ret < 0 ? ret : sprintf(buf, "%u.%02u dB\n",
+ 			val / rssi.multiplier, val % rssi.multiplier);
+@@ -7757,7 +7796,7 @@ static ssize_t ad9361_phy_tx_read(struct iio_dev *indio_dev,
+ 	u32 val;
+ 	int ret;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&phy->lock);
+ 	ret = ad9361_spi_readm(phy->spi, REG_TX_RSSI_LSB,
+ 			reg_val_buf, ARRAY_SIZE(reg_val_buf));
+ 
+@@ -7771,7 +7810,7 @@ static ssize_t ad9361_phy_tx_read(struct iio_dev *indio_dev,
+ 	default:
+ 		ret = -EINVAL;
+ 	}
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&phy->lock);
+ 
+ 	val *= RSSI_RESOLUTION;
+ 
+@@ -7814,7 +7853,7 @@ static int ad9361_phy_read_raw(struct iio_dev *indio_dev,
+ 	struct ad9361_rf_phy *phy = iio_priv(indio_dev);
+ 	int ret;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&phy->lock);
+ 	switch (m) {
+ 	case IIO_CHAN_INFO_HARDWAREGAIN:
+ 		if (chan->output) {
+@@ -7892,7 +7931,7 @@ static int ad9361_phy_read_raw(struct iio_dev *indio_dev,
+ 	}
+ 
+ out_unlock:
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&phy->lock);
+ 
+ 	return ret;
+ };
+@@ -7911,7 +7950,7 @@ static int ad9361_phy_write_raw(struct iio_dev *indio_dev,
+ 	if (st->curr_ensm_state == ENSM_STATE_SLEEP)
+ 		return -EINVAL;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&phy->lock);
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_HARDWAREGAIN:
+ 		if (chan->output) {
+@@ -7966,7 +8005,7 @@ static int ad9361_phy_write_raw(struct iio_dev *indio_dev,
+ 		ret = -EINVAL;
+ 	}
+ out:
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&phy->lock);
+ 
+ 	return ret;
+ }
+@@ -8162,10 +8201,10 @@ static ssize_t ad9361_debugfs_read(struct file *file, char __user *userbuf,
+ 
+ 	} else if (entry->cmd == DBGFS_RXGAIN_1 || entry->cmd == DBGFS_RXGAIN_2) {
+ 		struct rf_rx_gain rx_gain = {0};
+-		mutex_lock(&phy->indio_dev->mlock);
++		mutex_lock(&phy->lock);
+ 		ret = ad9361_get_rx_gain(phy, (entry->cmd == DBGFS_RXGAIN_1) ?
+ 				1 : 2, &rx_gain);
+-		mutex_unlock(&phy->indio_dev->mlock);
++		mutex_unlock(&phy->lock);
+ 		if (ret < 0)
+ 			return ret;
+ 
+@@ -8221,7 +8260,7 @@ static ssize_t ad9361_debugfs_write(struct file *file,
+ 	case DBGFS_INIT:
+ 		if (!(ret == 1 && val == 1))
+ 			return -EINVAL;
+-		mutex_lock(&phy->indio_dev->mlock);
++		mutex_lock(&phy->lock);
+ 		clk_set_rate(phy->clks[TX_SAMPL_CLK], 1);
+ 		clk_set_parent(phy->clks[RX_RFPLL], phy->clk_ext_lo_rx);
+ 		clk_set_parent(phy->clks[TX_RFPLL], phy->clk_ext_lo_tx);
+@@ -8230,7 +8269,7 @@ static ssize_t ad9361_debugfs_write(struct file *file,
+ 		ad9361_clks_disable(phy);
+ 		ad9361_clear_state(phy);
+ 		ret = ad9361_setup(phy);
+-		mutex_unlock(&phy->indio_dev->mlock);
++		mutex_unlock(&phy->lock);
+ 		if (ret < 0)
+ 			return ret;
+ 
+@@ -8238,9 +8277,9 @@ static ssize_t ad9361_debugfs_write(struct file *file,
+ 	case DBGFS_LOOPBACK:
+ 		if (ret != 1)
+ 			return -EINVAL;
+-		mutex_lock(&phy->indio_dev->mlock);
++		mutex_lock(&phy->lock);
+ 		ret = ad9361_bist_loopback(phy, val);
+-		mutex_unlock(&phy->indio_dev->mlock);
++		mutex_unlock(&phy->lock);
+ 		if (ret < 0)
+ 			return ret;
+ 
+@@ -8249,9 +8288,9 @@ static ssize_t ad9361_debugfs_write(struct file *file,
+ 	case DBGFS_BIST_PRBS:
+ 		if (ret != 1)
+ 			return -EINVAL;
+-		mutex_lock(&phy->indio_dev->mlock);
++		mutex_lock(&phy->lock);
+ 		ret = ad9361_bist_prbs(phy, val);
+-		mutex_unlock(&phy->indio_dev->mlock);
++		mutex_unlock(&phy->lock);
+ 		if (ret < 0)
+ 			return ret;
+ 
+@@ -8260,9 +8299,9 @@ static ssize_t ad9361_debugfs_write(struct file *file,
+ 	case DBGFS_BIST_TONE:
+ 		if (ret != 4)
+ 			return -EINVAL;
+-		mutex_lock(&phy->indio_dev->mlock);
++		mutex_lock(&phy->lock);
+ 		ret = ad9361_bist_tone(phy, val, val2, val3, val4);
+-		mutex_unlock(&phy->indio_dev->mlock);
++		mutex_unlock(&phy->lock);
+ 		if (ret < 0)
+ 			return ret;
+ 
+@@ -8271,9 +8310,9 @@ static ssize_t ad9361_debugfs_write(struct file *file,
+ 	case DBGFS_MCS:
+ 		if (ret != 1)
+ 			return -EINVAL;
+-		mutex_lock(&phy->indio_dev->mlock);
++		mutex_lock(&phy->lock);
+ 		ret = ad9361_mcs(phy, val);
+-		mutex_unlock(&phy->indio_dev->mlock);
++		mutex_unlock(&phy->lock);
+ 		if (ret < 0)
+ 			return ret;
+ 
+@@ -8285,10 +8324,10 @@ static ssize_t ad9361_debugfs_write(struct file *file,
+ 
+ 		if (phy->pdata->cal_sw1_gpio &&
+ 			phy->pdata->cal_sw2_gpio) {
+-			mutex_lock(&phy->indio_dev->mlock);
++			mutex_lock(&phy->lock);
+ 			gpiod_set_value(phy->pdata->cal_sw1_gpio, !!(val & BIT(0)));
+ 			gpiod_set_value(phy->pdata->cal_sw2_gpio, !!(val & BIT(1)));
+-			mutex_unlock(&phy->indio_dev->mlock);
++			mutex_unlock(&phy->lock);
+ 		} else {
+ 			return -ENODEV;
+ 		}
+@@ -8298,9 +8337,9 @@ static ssize_t ad9361_debugfs_write(struct file *file,
+ 	case DBGFS_DIGITAL_TUNE:
+ 		if (ret != 2)
+ 			return -EINVAL;
+-		mutex_lock(&phy->indio_dev->mlock);
++		mutex_lock(&phy->lock);
+ 		ret = ad9361_dig_tune(phy, val, val2);
+-		mutex_unlock(&phy->indio_dev->mlock);
++		mutex_unlock(&phy->lock);
+ 		if (ret < 0)
+ 			return ret;
+ 
+@@ -8337,7 +8376,7 @@ static ssize_t ad9361_debugfs_write(struct file *file,
+ 			return -EINVAL;
+ 		}
+ 
+-		mutex_lock(&phy->indio_dev->mlock);
++		mutex_lock(&phy->lock);
+ 		ctrl->gpo_manual_mode_enable_mask &= ~mask;
+ 		ctrl->gpo_manual_mode_enable_mask |= val3;
+ 
+@@ -8357,7 +8396,7 @@ static ssize_t ad9361_debugfs_write(struct file *file,
+ 		if (!(val3 & GPO_MANUAL_SELECT))
+ 			ad9361_spi_write(phy->spi, REG_EXTERNAL_LNA_CTRL,
+ 					 val3 | GPO_MANUAL_SELECT);
+-		mutex_unlock(&phy->indio_dev->mlock);
++		mutex_unlock(&phy->lock);
+ 		if (ret < 0)
+ 			return ret;
+ 
+@@ -9076,6 +9115,7 @@ static struct ad9361_phy_platform_data
+ 	/* Digital tune after modifying the sampling rate */
+ 	ad9361_of_get_bool(iodev, np, "adi,bb-clk-change-dig-tune-enable",
+ 			&pdata->bb_clk_change_dig_tune_en);
++
+ 	return pdata;
+ }
+ #else
+@@ -9345,7 +9385,7 @@ ad9361_gt_bin_write(struct file *filp, struct kobject *kobj,
+ 	if (IS_ERR_OR_NULL(table))
+ 		return PTR_ERR(table);
+ 
+-	mutex_lock(&phy->indio_dev->mlock);
++	mutex_lock(&phy->lock);
+ 	ad9361_free_gt(phy, phy->gt_info);
+ 
+ 	st->current_table = -1;
+@@ -9355,7 +9395,7 @@ ad9361_gt_bin_write(struct file *filp, struct kobject *kobj,
+ 		clk_get_rate(phy->clks[RX_RFPLL])),
+ 		GT_RX1 + GT_RX2);
+ 
+-	mutex_unlock(&phy->indio_dev->mlock);
++	mutex_unlock(&phy->lock);
+ 
+ 	return count;
+ }
+@@ -9429,6 +9469,16 @@ static int ad9361_spi_check(struct spi_device *spi)
+ 	return t.effective_speed_hz;
+ }
+ 
++static void ad9361_remove_ext_band_control(void *phy)
++{
++	ad9361_unregister_ext_band_control(phy);
++}
++
++static void ad9361_clk_del_provider(void *of_node)
++{
++	of_clk_del_provider(of_node);
++}
++
+ static int ad9361_probe(struct spi_device *spi)
+ {
+ 	struct iio_dev *indio_dev;
+@@ -9458,6 +9508,7 @@ static int ad9361_probe(struct spi_device *spi)
+ 	phy->indio_dev = indio_dev;
+ 	phy->spi = spi;
+ 	phy->clk_refin = clk;
++	mutex_init(&phy->lock);
+ 
+ 	ad9361_init_state(phy);
+ 
+@@ -9492,6 +9543,10 @@ static int ad9361_probe(struct spi_device *spi)
+ 			 "%s: failed to initialize ext band control\n",
+ 			 __func__);
+ 
++	ret = devm_add_action_or_reset(&spi->dev, ad9361_remove_ext_band_control, phy);
++	if (ret)
++		return ret;
++
+ 	phy->gt_info = ad9361_adi_gt_info;
+ 
+ 	ad9361_request_gt(phy, NULL);
+@@ -9519,12 +9574,16 @@ static int ad9361_probe(struct spi_device *spi)
+ 
+ 	ret = ad9361_setup(phy);
+ 	if (ret < 0)
+-		goto out_unregister_notifier;
++		return ret;
+ 
+ 	ret = of_clk_add_provider(spi->dev.of_node,
+ 			    of_clk_src_onecell_get, &phy->clk_data);
+ 	if (ret)
+-		goto out_disable_clocks;
++		return ret;
++
++	ret = devm_add_action_or_reset(&spi->dev, ad9361_clk_del_provider, spi->dev.of_node);
++	if (ret)
++		return ret;
+ 
+ 	sysfs_bin_attr_init(&phy->bin);
+ 	phy->bin.attr.name = "filter_fir_config";
+@@ -9538,9 +9597,9 @@ static int ad9361_probe(struct spi_device *spi)
+ 	phy->bin_gt.attr.mode = S_IWUSR | S_IRUGO;
+ 	phy->bin_gt.write = ad9361_gt_bin_write;
+ 	phy->bin_gt.read = ad9361_gt_bin_read;
+-	phy->bin_gt.size = 16384;
++	phy->bin_gt.size = 4096;
+ 
+-	indio_dev->dev.parent = &spi->dev;  //May need to be removed
++	indio_dev->dev.parent = &spi->dev;
+ 
+ 	if (spi->dev.of_node)
+ 		indio_dev->name = spi->dev.of_node->name;
+@@ -9553,19 +9612,18 @@ static int ad9361_probe(struct spi_device *spi)
+ 	indio_dev->num_channels = ARRAY_SIZE(ad9361_phy_chan) -
+ 		(phy->pdata->rx2tx2 ? 0 : 2);
+ 
+-	ret = iio_device_register(indio_dev);
++	ret = devm_iio_device_register(&spi->dev, indio_dev);
+ 	if (ret < 0)
+-		goto out_clk_del_provider;
++		return ret;
+ 	ret = ad9361_register_axi_converter(phy);
+ 	if (ret < 0)
+-		goto out_iio_device_unregister;
++		return ret;
+ 	ret = sysfs_create_bin_file(&indio_dev->dev.kobj, &phy->bin);
+ 	if (ret < 0)
+-		goto out_iio_device_unregister;
++		return ret;
+ 	ret = sysfs_create_bin_file(&indio_dev->dev.kobj, &phy->bin_gt);
+ 	if (ret < 0)
+-		goto out_iio_device_unregister;
+-
++		return ret;
+ 
+ 	ret = ad9361_register_debugfs(indio_dev);
+ 	if (ret < 0)
+@@ -9579,35 +9637,6 @@ static int ad9361_probe(struct spi_device *spi)
+ 				__func__, rev);
+ 
+ 	return 0;
+-
+-out_iio_device_unregister:
+-	iio_device_unregister(indio_dev);
+-out_clk_del_provider:
+-	of_clk_del_provider(spi->dev.of_node);
+-out_disable_clocks:
+-	ad9361_clks_disable(phy);
+-out_unregister_notifier:
+-	clk_notifier_unregister(phy->clks[RX_RFPLL], &phy->clk_nb_rx);
+-	clk_notifier_unregister(phy->clks[TX_RFPLL], &phy->clk_nb_tx);
+-
+-	return ret;
+-}
+-
+-static int ad9361_remove(struct spi_device *spi)
+-{
+-	struct ad9361_rf_phy *phy = ad9361_spi_to_phy(spi);
+-
+-	ad9361_unregister_ext_band_control(phy);
+-	sysfs_remove_bin_file(&phy->indio_dev->dev.kobj, &phy->bin_gt);
+-	sysfs_remove_bin_file(&phy->indio_dev->dev.kobj, &phy->bin);
+-	iio_device_unregister(phy->indio_dev);
+-	of_clk_del_provider(spi->dev.of_node);
+-	clk_notifier_unregister(phy->clks[RX_RFPLL], &phy->clk_nb_rx);
+-	clk_notifier_unregister(phy->clks[TX_RFPLL], &phy->clk_nb_tx);
+-	ad9361_clks_disable(phy);
+-    udelay(100);
+-    //kfree(phy->pdata);  This may need to be added back
+-	return 0;
+ }
+ 
+ static const struct spi_device_id ad9361_id[] = {
+@@ -9622,10 +9651,8 @@ MODULE_DEVICE_TABLE(spi, ad9361_id);
+ static struct spi_driver ad9361_driver = {
+ 	.driver = {
+ 		.name	= "ad9361",
+-		.owner	= THIS_MODULE,
+ 	},
+ 	.probe		= ad9361_probe,
+-	.remove		= ad9361_remove,
+ 	.id_table	= ad9361_id,
+ };
+ module_spi_driver(ad9361_driver);
+diff --git a/drivers/iio/adc/ad9361.h b/drivers/iio/adc/ad9361.h
+index 77671b9a8..18a3e5816 100644
+--- a/drivers/iio/adc/ad9361.h
++++ b/drivers/iio/adc/ad9361.h
+@@ -9,6 +9,7 @@
+ #ifndef IIO_FREQUENCY_AD9361_H_
+ #define IIO_FREQUENCY_AD9361_H_
+ 
++#include <linux/mutex.h>
+ #include "ad9361_regs.h"
+ 
+ enum ad9361_clocks {
+@@ -146,6 +147,8 @@ struct ad9361_rf_phy {
+ 	struct work_struct 	work;
+ 	struct completion       complete;
+ 	struct gain_table_info  *gt_info;
++	/* protect against device accesses */
++	struct mutex		lock;
+ 	char			*bin_attr_buf;
+ 	u32 			ad9361_debugfs_entry_index;
+ 
+diff --git a/drivers/iio/adc/ad9361_ext_band_ctrl.c b/drivers/iio/adc/ad9361_ext_band_ctrl.c
+index f90f5fbed..3a86ff069 100644
+--- a/drivers/iio/adc/ad9361_ext_band_ctrl.c
++++ b/drivers/iio/adc/ad9361_ext_band_ctrl.c
+@@ -365,21 +365,22 @@ static int ad9361_populate_settings(struct device *dev,
+ 			break;
+ 
+ 		new = devm_kzalloc(dev, sizeof(*new), GFP_KERNEL);
+-		if (!new)
++		if (!new) {
++			of_node_put(child);
+ 			return -ENOMEM;
++		}
+ 
+ 		dev_dbg(dev, "Found '%s'\n", child->name);
+ 		ret = ad9361_parse_setting_with_freq_range(dev, child,
+ 						ctl, new);
+ 		if (ret < 0) {
++			of_node_put(child);
+ 			dev_err(dev, "Error while parsing '%s': %d\n",
+ 				child->name, ret);
+-            of_node_put(child);
+ 			return ret;
+ 		}
+-		
+ 		list_add_tail(&new->list, lst);
+-        of_node_put(child);
++		of_node_put(child);
+ 	}
+ 
+ 	return cnt;
+@@ -403,13 +404,18 @@ static int ad9361_populate_hooks(struct device *dev,
+ 
+ 		ctl->hooks[i] = devm_kzalloc(dev, sizeof(*ctl->hooks[i]),
+ 					     GFP_KERNEL);
+-		if (!ctl->hooks[i])
++		if (!ctl->hooks[i]) {
++			of_node_put(child);
+ 			return -ENOMEM;
++		}
+ 
+ 		ret = ad9361_parse_setting(dev, child, ctl, ctl->hooks[i], NULL);
+-        of_node_put(child);
+-		if (ret < 0)
++		if (ret < 0) {
++			of_node_put(child);
+ 			return ret;
++		}
++
++		of_node_put(child);
+ 	}
+ 	return 0;
+ }
+diff --git a/drivers/iio/adc/cf_axi_adc.h b/drivers/iio/adc/cf_axi_adc.h
+index 0e145a677..72b2d5f12 100644
+--- a/drivers/iio/adc/cf_axi_adc.h
++++ b/drivers/iio/adc/cf_axi_adc.h
+@@ -184,6 +184,7 @@ enum adc_data_sel {
+ 
+ #define AXIADC_MAX_CHANNEL		128
+ 
++#include <linux/mutex.h>
+ #include <linux/spi/spi.h>
+ #include <linux/clk/clkscale.h>
+ 
+@@ -230,6 +231,12 @@ struct axiadc_converter {
+ 	int				num_channels;
+ 	const struct attribute_group	*attrs;
+ 	struct iio_dev 	*indio_dev;
++	/*
++	 * shared lock between the converter and axi_adc to sync
++	 * accesses/configurations to/with the IP core. The axi_adc driver is
++	 * responsible to initialize this lock.
++	 */
++	struct mutex lock;
+ 	int (*read_raw)(struct iio_dev *indio_dev,
+ 			struct iio_chan_spec const *chan,
+ 			int *val,
+diff --git a/drivers/iio/adc/cf_axi_adc_core.c b/drivers/iio/adc/cf_axi_adc_core.c
+index d2ebaa066..cbb116ccc 100644
+--- a/drivers/iio/adc/cf_axi_adc_core.c
++++ b/drivers/iio/adc/cf_axi_adc_core.c
+@@ -240,7 +240,7 @@ static ssize_t axiadc_debugfs_pncheck_write(struct file *file,
+ 	else
+ 		mode = ADC_PN_OFF;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&conv->lock);
+ 
+ 	for (i = 0; i < axiadc_num_phys_channels(st); i++) {
+ 		if (conv->set_pnsel)
+@@ -255,7 +255,7 @@ static ssize_t axiadc_debugfs_pncheck_write(struct file *file,
+ 	for (i = 0; i < axiadc_num_phys_channels(st); i++)
+ 		axiadc_write(st, ADI_REG_CHAN_STATUS(i), ~0);
+ 
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&conv->lock);
+ 
+ 	return count;
+ }
+@@ -271,6 +271,7 @@ static int axiadc_reg_access(struct iio_dev *indio_dev,
+ 			      unsigned *readval)
+ {
+ 	struct axiadc_state *st = iio_priv(indio_dev);
++	struct axiadc_converter *conv = to_converter(st->dev_spi);
+ 	int ret;
+ 
+ 	/* Check that the register is in range and aligned */
+@@ -278,7 +279,7 @@ static int axiadc_reg_access(struct iio_dev *indio_dev,
+ 	    ((reg & 0xffff) >= st->regs_size || (reg & 0x3)))
+ 		return -EINVAL;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&conv->lock);
+ 
+ 	if (!(reg & DEBUGFS_DRA_PCORE_REG_MAGIC)) {
+ 		struct axiadc_converter *conv = to_converter(st->dev_spi);
+@@ -295,7 +296,7 @@ static int axiadc_reg_access(struct iio_dev *indio_dev,
+ 			*readval = axiadc_read(st, reg & 0xFFFF);
+ 		ret = 0;
+ 	}
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&conv->lock);
+ 
+ 	return 0;
+ }
+@@ -372,16 +373,17 @@ static ssize_t axiadc_sampling_frequency_available(struct device *dev,
+ {
+ 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+ 	struct axiadc_state *st = iio_priv(indio_dev);
++	struct axiadc_converter *conv = to_converter(st->dev_spi);
+ 	unsigned long freq;
+ 	int i, ret;
+ 
+ 	if (!st->decimation_factor)
+ 		return -ENODEV;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&conv->lock);
+ 	ret = axiadc_get_parent_sampling_frequency(st, &freq);
+ 	if (ret < 0) {
+-		mutex_unlock(&indio_dev->mlock);
++		mutex_unlock(&conv->lock);
+ 		return ret;
+ 	}
+ 
+@@ -391,7 +393,7 @@ static ssize_t axiadc_sampling_frequency_available(struct device *dev,
+ 
+ 	ret += snprintf(&buf[ret], PAGE_SIZE - ret, "\n");
+ 
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&conv->lock);
+ 
+ 	return ret;
+ }
+@@ -406,13 +408,14 @@ static ssize_t axiadc_sync_start_store(struct device *dev,
+ {
+ 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+ 	struct axiadc_state *st = iio_priv(indio_dev);
++	struct axiadc_converter *conv = to_converter(st->dev_spi);
+ 	int ret;
+ 
+ 	ret = sysfs_match_string(axiadc_sync_ctrls, buf);
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	mutex_lock(&indio_dev->mlock);
++	mutex_lock(&conv->lock);
+ 	if (st->ext_sync_avail) {
+ 		switch (ret) {
+ 		case 0:
+@@ -433,7 +436,7 @@ static ssize_t axiadc_sync_start_store(struct device *dev,
+ 		reg = axiadc_read(st, ADI_REG_CNTRL);
+ 		axiadc_write(st, ADI_REG_CNTRL, reg | ADI_SYNC);
+ 	}
+-	mutex_unlock(&indio_dev->mlock);
++	mutex_unlock(&conv->lock);
+ 
+ 	return ret < 0 ? ret : len;
+ }
+@@ -508,7 +511,7 @@ static int axiadc_read_raw(struct iio_dev *indio_dev,
+ 	switch (m) {
+ 	case IIO_CHAN_INFO_CALIBPHASE:
+ 		phase = 1;
+-		/* fall-through */
++		fallthrough;
+ 	case IIO_CHAN_INFO_CALIBSCALE:
+ 		tmp = axiadc_read(st, ADI_REG_CHAN_CNTRL_2(channel));
+ 		/*  format is 1.1.14 (sign, integer and fractional bits) */
+@@ -611,7 +614,7 @@ static int axiadc_write_raw(struct iio_dev *indio_dev,
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_CALIBPHASE:
+ 		phase = 1;
+-		/* fall-through */
++		fallthrough;
+ 	case IIO_CHAN_INFO_CALIBSCALE:
+ 		/*  format is 1.1.14 (sign, integer and fractional bits) */
+ 		switch (val) {
+@@ -854,6 +857,7 @@ static const struct iio_info axiadc_info = {
+ struct axiadc_spidev {
+ 	struct device_node *of_nspi;
+ 	struct device *dev_spi;
++	struct module *owner;
+ };
+ 
+ static int axiadc_attach_spi_client(struct device *dev, void *data)
+@@ -864,6 +868,7 @@ static int axiadc_attach_spi_client(struct device *dev, void *data)
+ 	device_lock(dev);
+ 	if ((axiadc_spidev->of_nspi == dev->of_node) && dev->driver) {
+ 		axiadc_spidev->dev_spi = dev;
++		axiadc_spidev->owner = dev->driver->owner;
+ 		ret = 1;
+ 	}
+ 	device_unlock(dev);
+@@ -1053,9 +1058,10 @@ int axiadc_append_attrs(struct iio_dev *indio_dev,
+ 
+ static void axiadc_release_converter(void *conv)
+ {
+-	struct device *dev = conv;
+-	put_device(dev);
+-	module_put(dev->driver->owner);
++	struct axiadc_spidev *axiadc_spidev = conv;
++
++	put_device(axiadc_spidev->dev_spi);
++	module_put(axiadc_spidev->owner);
+ }
+ 
+ /**
+@@ -1075,12 +1081,11 @@ static int axiadc_probe(struct platform_device *pdev)
+ 	struct iio_dev *indio_dev;
+ 	struct axiadc_state *st;
+ 	struct resource *mem;
+-	struct axiadc_spidev axiadc_spidev;
++	struct axiadc_spidev *axiadc_spidev;
+ 	struct axiadc_converter *conv;
+ 	unsigned int config, skip = 1;
+ 	int ret;
+ 
+-    udelay(100);
+ 	dev_dbg(&pdev->dev, "Device Tree Probing \'%s\'\n",
+ 		 pdev->dev.of_node->name);
+ 
+@@ -1090,31 +1095,32 @@ static int axiadc_probe(struct platform_device *pdev)
+ 
+ 	info = id->data;
+ 
++	axiadc_spidev = devm_kzalloc(&pdev->dev, sizeof(*axiadc_spidev), GFP_KERNEL);
++	if (!axiadc_spidev)
++		return -ENOMEM;
++
+ 	/* Defer driver probe until matching spi
+ 	 * converter driver is registered
+ 	 */
+-
+-	axiadc_spidev.of_nspi = of_parse_phandle(pdev->dev.of_node,
+-						 "spibus-connected", 0);
+-	if (!axiadc_spidev.of_nspi) {
++	axiadc_spidev->of_nspi = of_parse_phandle(pdev->dev.of_node,
++						  "spibus-connected", 0);
++	if (!axiadc_spidev->of_nspi) {
+ 		dev_err(&pdev->dev, "could not find spi node\n");
+ 		return -ENODEV;
+ 	}
+ 
+-	ret = bus_for_each_dev(&spi_bus_type, NULL, &axiadc_spidev,
++	ret = bus_for_each_dev(&spi_bus_type, NULL, axiadc_spidev,
+ 			       axiadc_attach_spi_client);
+-    
+-    of_node_put(axiadc_spidev.of_nspi);
+-    
+-    if (ret == 0)
++	of_node_put(axiadc_spidev->of_nspi);
++	if (ret == 0)
+ 		return -EPROBE_DEFER;
+ 
+-	if (!try_module_get(axiadc_spidev.dev_spi->driver->owner))
++	if (!try_module_get(axiadc_spidev->owner))
+ 		return -ENODEV;
+ 
+-    get_device(axiadc_spidev.dev_spi);
++	get_device(axiadc_spidev->dev_spi);
+ 
+-	ret = devm_add_action_or_reset(&pdev->dev, axiadc_release_converter, axiadc_spidev.dev_spi);
++	ret = devm_add_action_or_reset(&pdev->dev, axiadc_release_converter, axiadc_spidev);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -1134,7 +1140,7 @@ static int axiadc_probe(struct platform_device *pdev)
+ 	if (IS_ERR(st->regs))
+ 		return PTR_ERR(st->regs);
+ 
+-	st->dev_spi = axiadc_spidev.dev_spi;
++	st->dev_spi = axiadc_spidev->dev_spi;
+ 
+ 	platform_set_drvdata(pdev, indio_dev);
+ 
+@@ -1151,6 +1157,7 @@ static int axiadc_probe(struct platform_device *pdev)
+ 
+ 	iio_device_set_drvdata(indio_dev, conv);
+ 	conv->indio_dev = indio_dev;
++	mutex_init(&conv->lock);
+ 
+ 	if (conv->chip_info->num_shadow_slave_channels) {
+ 		u32 regs[2];
+@@ -1233,9 +1240,9 @@ static int axiadc_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
+-	ret = devm_iio_device_register(&pdev->dev,indio_dev);
++	ret = devm_iio_device_register(&pdev->dev, indio_dev);
+ 	if (ret)
+-        return ret;
++		return ret;
+ 
+ 	if (iio_get_debugfs_dentry(indio_dev))
+ 		debugfs_create_file("pseudorandom_err_check", 0644,

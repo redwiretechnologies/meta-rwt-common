@@ -23,6 +23,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     python3-pillow \
     python3-eventlet \
     gr-rwt \
+    gr-pager \
     iptables \
     networkmanager \
     networkmanager-nmtui \
@@ -63,6 +64,8 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     python3-click \
     python3-click-plugins \
     python3-tinydb \
+    libgpiod \
+    libgpiod-python \
 "
 
 inherit core-image image-buildinfo
