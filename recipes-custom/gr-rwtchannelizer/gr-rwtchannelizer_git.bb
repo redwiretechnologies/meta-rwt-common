@@ -14,7 +14,7 @@ export HOST_SYS="${MULTIMACH_TARGET_SYS}"
 S="${WORKDIR}/git"
 
 SRC_URI = "git://github.com/redwiretechnologies/gr-rwtchannelizer.git;branch=maint-3.10;protocol=https"
-SRCREV = "dd1b7a09cc3bb0edc90be19272b94323d2e05ac8"
+SRCREV = "5ec7dbecaf03b2e5f945f86e8d8447abd61b2588"
 
 
 EXTRA_OECMAKE = " \

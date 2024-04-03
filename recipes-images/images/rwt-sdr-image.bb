@@ -11,12 +11,12 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     packagegroup-sdr-base-debug \
     packagegroup-sdr-base-devel \
     packagegroup-sdr-base-python \
+    packagegroup-base-bluetooth \
     gnuradio \
     ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'xauth', '', d)} \
     libiio-tests \
     libiio-iiod \
     i2c-tools \
-    fru-tools \
     parted \
     dosfstools \
     python3-flask-socketio \
@@ -66,6 +66,10 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     python3-tinydb \
     libgpiod \
     libgpiod-python \
+    linux-firmware \
+    bluez5 \
+    python3-pybluez \
+    bluepy \
 "
 
 inherit core-image image-buildinfo
