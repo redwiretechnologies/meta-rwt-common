@@ -70,6 +70,8 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     bluez5 \
     python3-pybluez \
     bluepy \
+    board-id \
+    fpga-info \
 "
 
 inherit core-image image-buildinfo

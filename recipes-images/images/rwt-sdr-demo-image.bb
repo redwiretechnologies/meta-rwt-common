@@ -60,6 +60,8 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     gqrx \
     soapysdr \
     python3-click \
+    board-id \
+    fpga-info \
 "
 
 inherit core-image

@@ -20,6 +20,8 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     lmsensors-sensors \
     lmsensors-sensorsconfconvert \
     lmsensors-sensorsdetect \
+    fpga-info \
+    board-id \
 "
 
 IMAGE_INSTALL = "packagegroup-core-boot ${CORE_IMAGE_EXTRA_INSTALL}"
