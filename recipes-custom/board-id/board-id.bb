@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 SRC_URI = "git://git@github.com/redwiretechnologies/board_id.git;branch=master;protocol=ssh \
 "
 S = "${WORKDIR}/git"
-SRCREV = "072135efd1c15a0b0290f0279d53b73ed91c92ea"
+SRCREV = "c4e4e8c0714ee56cf9416a15f7244b56bc49b8b8"
 DEPENDS = "python3"
 RDEPENDS:${PN} = "perl"
 
