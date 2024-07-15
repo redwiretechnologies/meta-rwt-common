@@ -1,7 +1,7 @@
 DESCRIPTION = "Small python database"
 HOMEPAGE = "https://tinydb.readthedocs.io/en/latest/"
 SECTION = "devel/python"
-LICENSE = "open"
+LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=ee9d91e0565d932659cf275d126c7437"
 
 SRC_URI[md5sum] = "c8a11437354c86786801d871d848a7e4"

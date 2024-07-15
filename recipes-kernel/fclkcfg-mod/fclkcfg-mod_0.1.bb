@@ -1,6 +1,6 @@
 DESCRIPTION = "FPGA Clock Configuration Device Driver"
 HOMEPAGE = "https://github.com/ikwzm/fclkcfg"
-LICENSE = "BSD"
+LICENSE = "BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=6e83d63de93384e6cce0fd3632041d91"
 
 inherit module

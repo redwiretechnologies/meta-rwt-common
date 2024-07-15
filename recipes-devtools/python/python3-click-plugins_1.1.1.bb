@@ -1,7 +1,7 @@
 DESCRIPTION = "An extension module for click to register external CLI commands via setuptools entry-points."
 HOMEPAGE = "https://github.com/click-contrib/click-plugins"
 SECTION = "devel/python"
-LICENSE = "New-BSD"
+LICENSE = "BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://LICENSE.txt;md5=d512f1f7204a358a9323ae899c988eba"
 
 SRC_URI[md5sum] = "969268b5b005b2b56115c66c55013252"

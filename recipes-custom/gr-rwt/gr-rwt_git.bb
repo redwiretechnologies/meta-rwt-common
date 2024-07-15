@@ -14,7 +14,7 @@ export HOST_SYS="${MULTIMACH_TARGET_SYS}"
 S="${WORKDIR}/git"
 
 SRC_URI = "git://github.com/redwiretechnologies/gr-rwt.git;branch=maint-3.10;protocol=https"
-SRCREV = "422defcf8fa401d91b548b74b0314ab2d7350b2b"
+SRCREV = "ae211540586e5715d4945bc261ac8fb473e34208"
 
 
 EXTRA_OECMAKE = " \

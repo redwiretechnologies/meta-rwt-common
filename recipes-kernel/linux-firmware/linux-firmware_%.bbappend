@@ -25,3 +25,12 @@ do_install:append() {
 }
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
+PACKAGES =+ "${PN}-adi "
+FILES:${PN}-adi = " \
+  ${nonarch_base_libdir}/firmware/ad9467_intbypass_ad9517.stp \
+  ${nonarch_base_libdir}/firmware/ad9517.stp \
+  ${nonarch_base_libdir}/firmware/ad9517_fmcomms6.stp \
+  ${nonarch_base_libdir}/firmware/adau1761.bin \
+  ${nonarch_base_libdir}/firmware/Mykonos_M3.bin \
+  ${nonarch_base_libdir}/firmware/pzsdr-fmc-ad9517.stp \
+  "
