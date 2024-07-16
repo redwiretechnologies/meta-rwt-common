@@ -3,7 +3,7 @@ HOMEPAGE = "https://github.com/redwiretechnologies.fpga_info"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-SRC_URI = "git://git@github.com/redwiretechnologies/fpga_info.git;branch=master;protocol=ssh \
+SRC_URI = "git://github.com/redwiretechnologies/fpga_info.git;branch=master;protocol=https \
 "
 S = "${WORKDIR}/git"
 SRCREV = "fe9655de8881fe5b6a366ed0d71ce4b6a60d4985"
