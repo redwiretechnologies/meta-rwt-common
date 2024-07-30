@@ -25,6 +25,8 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     gr-rwt \
     iptables \
     networkmanager \
+    networkmanager-nmtui \
+    networkmanager-nmcli \
     python3-networkmanager \
     libmbim \
     libqmi \
@@ -69,6 +71,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     bluepy \
     board-id \
     fpga-info \
+    cppzmq-dev \
 "
 
 inherit core-image image-buildinfo
