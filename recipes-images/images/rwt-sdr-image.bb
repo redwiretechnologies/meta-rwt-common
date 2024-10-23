@@ -20,6 +20,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     parted \
     dosfstools \
     python3-flask-socketio \
+    python3-simple-websocket \
     python3-pillow \
     python3-eventlet \
     gr-rwt \
@@ -72,6 +73,21 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     board-id \
     fpga-info \
     cppzmq-dev \
+    python3-setuptools \
+    python3-pyadi-iio \
+    python3-pybind11 \
+    python3-colorama \
+    python3-bokeh \
+    gr-ieee80211 \
+    gr-foo \
+    gr-adsb \
+    gr-mesa \
+    gr-satellites \
+    python3-pybind11 \
+    python3-typing-extensions \
+    python3-construct \
+    python3-matplotlib \
+    python3-gunicorn \
 "
 
 inherit core-image image-buildinfo
