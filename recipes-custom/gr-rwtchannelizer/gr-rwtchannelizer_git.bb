@@ -3,10 +3,10 @@ HOMEPAGE = "https://github.com/redwiretechnologies/gr-rwt"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-DEPENDS ="gnuradio libiio libad9361-iio python3 cppunit libgpiod python3-pybind11-native python3-native python3-numpy-native boost gr-rwt"
+DEPENDS ="gnuradio libiio libad9361-iio python3 cppunit libgpiod python3-pybind11-native python3-numpy-native boost gr-rwt"
 RDEPENDS:${PN} = "gnuradio python3-click"
 
-inherit setuptools3 cmake pkgconfig
+inherit setuptools3 cmake pkgconfig python3native
 
 export BUILD_SYS
 export HOST_SYS="${MULTIMACH_TARGET_SYS}"
@@ -14,11 +14,13 @@ export HOST_SYS="${MULTIMACH_TARGET_SYS}"
 S="${WORKDIR}/git"
 
 SRC_URI = "git://github.com/redwiretechnologies/gr-rwtchannelizer.git;branch=maint-3.10;protocol=https"
-SRCREV = "5ec7dbecaf03b2e5f945f86e8d8447abd61b2588"
+SRCREV = "63e0a22d42b4cca5ac6d70a58eb9bbdf7cf24845"
 
+PYTHON_MAJMIN = "3.12"
 
 EXTRA_OECMAKE = " \
     -DGR_PYTHON_DIR=${PYTHON_SITEPACKAGES_DIR} \
+    -DPYTHON_INCLUDE_DIRS=${STAGING_INCDIR}/python${PYTHON_MAJMIN} \
     -DPYTHON3=1 \
     -DENABLE_DOXYGEN=OFF \
     "
