@@ -1,5 +1,5 @@
-SRCREV := "75586fca4f5940bc8b7d6c2ba9dd00f0f2a48451"
-KBRANCH := "main"
+SRCREV := "d85aaf88d1ffc02fa255e90ebc2b9008d04c344d"
+KBRANCH := "2023_R2"
 LINUX_VERSION := "6.1.70"
 DEPENDS = "linux-firmware"
 LICENSE = "GPLv2"

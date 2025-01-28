@@ -4,12 +4,13 @@ LINUX_VERSION_EXTENSION ?= "-xilinx-${XILINX_RELEASE_VERSION}"
 PV = "${LINUX_VERSION}${LINUX_VERSION_EXTENSION}+git${SRCPV}"
 
 # Sources, by default allow for the use of SRCREV pointing to orphaned tags/commits
-KBRANCH ?= "main"
+#KBRANCH ?= "main"
+KBRANCH ?= "2023_R2"
 SRCBRANCHARG = "${@['nobranch=1', 'branch=${KBRANCH}'][d.getVar('KBRANCH', True) != '']}"
 
 FILESOVERRIDES:append = ":${XILINX_RELEASE_VERSION}"
-#KERNELURI ?= "git://github.com/analogdevicesinc/linux.git;protocol=https"
-KERNELURI ?= "git://github.com/redwiretechnologies/linux-adi3.git;protocol=https"
+KERNELURI ?= "git://github.com/analogdevicesinc/linux.git;protocol=https"
+#KERNELURI ?= "git://github.com/redwiretechnologies/linux-adi3.git;protocol=https"
 #KERNELURI ?= "git://github.com/xilinx/linux-xlnx.git;protocol=https"
 YOCTO_META ?= "git://git.yoctoproject.org/yocto-kernel-cache;type=kmeta;name=meta;branch=yocto-6.1;destsuffix=yocto-kmeta"
 SRC_URI = "${KERNELURI};${SRCBRANCHARG} \
