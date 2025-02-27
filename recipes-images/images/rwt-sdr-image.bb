@@ -88,6 +88,11 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     python3-construct \
     python3-matplotlib \
     python3-gunicorn \
+    python3-fastapi \
+    python3-orjson \
+    python3-typer \
+    python3-nicegui \
+    python3-fastui \
 "
 
 inherit core-image image-buildinfo
