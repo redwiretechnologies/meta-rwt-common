@@ -1,0 +1,23 @@
+From 8706b0ffa90182e4253e6c74b87aa3f31b6dcf28 Mon Sep 17 00:00:00 2001
+From: Toby Flynn <campingandskiing@gmail.com>
+Date: Wed, 12 Feb 2025 11:21:54 -0500
+Subject: [PATCH] adding 5 second timeout
+
+Upstream-Status: Inappropriate [RWT specific]
+---
+ units/systemd-networkd-wait-online.service.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/units/systemd-networkd-wait-online.service.in b/units/systemd-networkd-wait-online.service.in
+index 7768121f5f..f95c45748d 100644
+--- a/units/systemd-networkd-wait-online.service.in
++++ b/units/systemd-networkd-wait-online.service.in
+@@ -19,7 +19,7 @@ Before=network-online.target shutdown.target
+ 
+ [Service]
+ Type=oneshot
+-ExecStart={{LIBEXECDIR}}/systemd-networkd-wait-online
++ExecStart={{LIBEXECDIR}}/systemd-networkd-wait-online --timeout=5
+ RemainAfterExit=yes
+ 
+ [Install]
