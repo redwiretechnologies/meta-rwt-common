@@ -93,6 +93,11 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     python3-typer \
     python3-nicegui \
     python3-fastui \
+    python3-smbus \
+    python3-aiofiles \
+    python3-docutils \
+    python3-vbuild \
+    python3-markdown2 \
 "
 
 inherit core-image image-buildinfo

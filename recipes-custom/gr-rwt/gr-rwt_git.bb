@@ -12,7 +12,7 @@ inherit gnuradio-oot
 S="${WORKDIR}/git"
 
 SRC_URI = "git://github.com/redwiretechnologies/gr-rwt.git;branch=maint-3.10;protocol=https"
-SRCREV = "ce231da1d350e750881914e3d5b51ec8f8568f0f"
+SRCREV = "5c037efdb835c13c793aa240db1210ecd2076ca1"
 
 
 
