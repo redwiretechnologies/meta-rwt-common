@@ -7,9 +7,8 @@ inherit module
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRCREV = "8a6fa423754941779fc01222bf710080adea8e17"
+SRCREV = "3921015f1f98048ffb994fac17c02dc81fc2c4c6"
 SRC_URI = "git://github.com/ikwzm/fclkcfg.git;protocol=https \
-           file://0001-yocto-makefile-correction.patch \
             "
 
 
