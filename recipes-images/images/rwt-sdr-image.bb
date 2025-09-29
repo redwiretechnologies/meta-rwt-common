@@ -70,8 +70,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     bluez5 \
     python3-pybluez \
     bluepy \
-    board-id \
-    fpga-info \
     cppzmq-dev \
     python3-setuptools \
     python3-pyadi-iio \
@@ -93,6 +91,16 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     python3-typer \
     python3-nicegui \
     python3-fastui \
+    python3-smbus \
+    python3-aiofiles \
+    python3-docutils \
+    python3-vbuild \
+    python3-markdown2 \
+    python3-hardware-manager \
+    hwmscripts \
+    hwmscripts-service \
+    python3-httpx \
+    python3-httpx-cli \
 "
 
 inherit core-image image-buildinfo
