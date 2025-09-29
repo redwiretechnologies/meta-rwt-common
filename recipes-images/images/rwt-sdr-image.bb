@@ -98,6 +98,9 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     python3-markdown2 \
     python3-hardware-manager \
     hwmscripts \
+    hwmscripts-service \
+    python3-httpx \
+    python3-httpx-cli \
 "
 
 inherit core-image image-buildinfo

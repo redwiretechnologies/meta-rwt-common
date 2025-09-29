@@ -13,7 +13,7 @@ RDEPENDS:${PN} = "python3-fastui python3-typer python3-smbus python3-nicegui pyt
 
 # Modify these as desired
 PV = "1.0+git"
-SRCREV = "0a18bae4a7c735473a6b9b64e4339382e30032cf"
+SRCREV = "a0c9b280bea8550be2bb88c10a6e62b7bd76138c"
 
 S = "${WORKDIR}/git"
 inherit python_setuptools_build_meta
