@@ -4,7 +4,6 @@ LINUX_VERSION_EXTENSION ?= "-xilinx-${XILINX_RELEASE_VERSION}"
 PV = "${LINUX_VERSION}${LINUX_VERSION_EXTENSION}+git${SRCPV}"
 
 # Sources, by default allow for the use of SRCREV pointing to orphaned tags/commits
-KBRANCH ?= "main"
 #KBRANCH ?= "2023_R2"
 SRCBRANCHARG = "${@['nobranch=1', 'branch=${KBRANCH}'][d.getVar('KBRANCH', True) != '']}"
 
@@ -12,7 +11,7 @@ FILESOVERRIDES:append = ":${XILINX_RELEASE_VERSION}"
 KERNELURI ?= "git://github.com/analogdevicesinc/linux.git;protocol=https"
 #KERNELURI ?= "git://github.com/redwiretechnologies/linuxadi.git;protocol=https"
 #KERNELURI ?= "git://github.com/xilinx/linux-xlnx.git;protocol=https"
-YOCTO_META ?= "git://git.yoctoproject.org/yocto-kernel-cache;type=kmeta;name=meta;branch=yocto-6.6;destsuffix=yocto-kmeta"
+YOCTO_META ?= "git://git.yoctoproject.org/yocto-kernel-cache;type=kmeta;name=meta;branch=yocto-6.12;destsuffix=yocto-kmeta"
 SRC_URI = "${KERNELURI};${SRCBRANCHARG} \
            file://dt-overlay.cfg \
 	   ${YOCTO_META} \
@@ -20,7 +19,8 @@ SRC_URI = "${KERNELURI};${SRCBRANCHARG} \
 
 FPGA_MNGR_RECONFIG_ENABLE = "1"
 SRCREV_machine ?= "${SRCREV}"
-SRCREV_meta = "5d0809d0d939c7738cb6e5391126c73fd0e4e865"
+#SRCREV_meta = "5d0809d0d939c7738cb6e5391126c73fd0e4e865"
+SRCREV_meta = "5d9c6c5b0531161f9e8e9d108740ebcec9177398"
 SRCREV_FORMAT = "machine"
 
 require recipes-kernel/linux/linux-yocto.inc

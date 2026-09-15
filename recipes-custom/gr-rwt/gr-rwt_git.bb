@@ -11,8 +11,8 @@ inherit gnuradio-oot
 
 S="${WORKDIR}/git"
 
-SRC_URI = "git://github.com/redwiretechnologies/gr-rwt.git;branch=removefpgaloader;protocol=https"
-SRCREV = "7ed6c712070abef60f834fecc4759371f110668c"
+SRC_URI = "git://github.com/redwiretechnologies/gr-rwt.git;branch=libiio-v1-upgrade;protocol=https"
+SRCREV = "a7943e39f9cefa14b9835c0909b85d2deace5dde"
 
 
 
