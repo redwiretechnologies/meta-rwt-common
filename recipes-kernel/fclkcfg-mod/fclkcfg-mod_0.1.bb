@@ -8,9 +8,9 @@ inherit module
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRCREV = "3921015f1f98048ffb994fac17c02dc81fc2c4c6"
-SRC_URI = "git://github.com/ikwzm/fclkcfg.git;protocol=https \
+SRC_URI = "git://github.com/ikwzm/fclkcfg.git;branch=master;protocol=https \
             "
 
 
-S = "${WORKDIR}/git"
+
 RPROVIDES_${PN} += "kernel-module-fclkcfg"

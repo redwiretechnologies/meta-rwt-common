@@ -20,7 +20,7 @@ do_install() {
        install -d ${D}${bindir}
        cp -r ${S}/board_id* ${D}${bindir}
 }
-FILES:${PN} +="\
+FILES:${PN} += " \
         ${bindir}/board_id \
         ${bindir}/board_id.json \
         "

@@ -11,17 +11,17 @@ SRC_URI = "\
     file://fpgaloader  \
     file://fpga_info \
     "
-S = "${WORKDIR}"
+
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 INSANE_SKIP:${PN} += "empty-dirs"
 
 do_install() {
-    install -Dm 0755 ${S}/fpga_info ${D}${bindir}/fpga_info
-    install -Dm 0755 ${S}/fpgaloader ${D}${bindir}/fpgaloader
-    install -Dm 0755 ${S}/board_id ${D}${bindir}/board_id
-    install -Dm 0644 ${S}/hardware_manager.service ${D}${sysconfdir}/systemd/system/hardware_manager.service
+    install -Dm 0755 ${UNPACKDIR}/fpga_info ${D}${bindir}/fpga_info
+    install -Dm 0755 ${UNPACKDIR}/fpgaloader ${D}${bindir}/fpgaloader
+    install -Dm 0755 ${UNPACKDIR}/board_id ${D}${bindir}/board_id
+    install -Dm 0644 ${UNPACKDIR}/hardware_manager.service ${D}${sysconfdir}/systemd/system/hardware_manager.service
 }
 
 FILES:${PN} = "\

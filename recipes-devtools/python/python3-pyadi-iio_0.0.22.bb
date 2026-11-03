@@ -7,7 +7,7 @@ SRCREV = "${@ "6b33acdfdb9910e89d85243fd584c136142587a6" if bb.utils.to_boolean(
 SRC_URI = "git://github.com/analogdevicesinc/pyadi-iio.git;protocol=https;branch=${BRANCH}"
 PV:append = "+git${SRCPV}"
 
-S = "${WORKDIR}/git"
+
 
 RDEPENDS:${PN} = "python3-numpy (>=1.20) \
 				  python3-libiio (>=0.23.1)"

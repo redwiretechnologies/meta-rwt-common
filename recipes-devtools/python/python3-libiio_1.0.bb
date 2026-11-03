@@ -11,7 +11,7 @@ SRCREV = "01cc5927664939ded51cc3b91b972d80c7c231a0"
 
 RDEPENDS:${PN} = "python3-fastui python3-typer python3-smbus python3-nicegui python3-ifaddr"
 
-S = "${WORKDIR}/git/bindings/python"
+S = "${UNPACKDIR}/python3-libiio-1.0+git/bindings/python"
 PV = "1.0+git${SRCPV}"
 # Modify these as desired
 

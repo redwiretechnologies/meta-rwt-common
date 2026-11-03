@@ -1,0 +1,27 @@
+#!/bin/sh
+# Run the gr4-rwt unit tests (boost-ext-ut binaries) and report results in
+# the PASS/FAIL format ptest-runner expects. As in meta-sdr, the binaries
+# are run directly rather than through ctest.
+#
+# None of them needs an Oxygen: the radio tests use libiio v1's emulation
+# backend and skip themselves when libiio was built without it.
+
+RET=0
+
+# qa_Registry links libGrGr4RwtRwtBlocksShared.so, which lives in GR4's
+# plugin directory rather than on the default library path.
+export LD_LIBRARY_PATH="@LIBDIR@/gnuradio-4/plugins${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export GNURADIO4_PLUGIN_DIRECTORIES=@LIBDIR@/gnuradio-4/plugins/
+
+for t in tests/qa_*; do
+    [ -x "$t" ] || continue
+    name=$(basename "$t")
+    if "./$t"; then
+        echo "PASS: $name"
+    else
+        echo "FAIL: $name"
+        RET=1
+    fi
+done
+
+exit $RET

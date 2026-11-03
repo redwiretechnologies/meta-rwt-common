@@ -2,7 +2,7 @@ From 6254601033a64010019b1e501351b12d7710ee45 Mon Sep 17 00:00:00 2001
 From: tflynn <tflynn@redwiretechnologies.us>
 Date: Fri, 27 Aug 2021 08:53:19 -0400
 Subject: [PATCH] add auto ethernet for g-ether
-
+Upstream-Status: Denied [custom configuration]
 ---
  data/85-nm-unmanaged.rules | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

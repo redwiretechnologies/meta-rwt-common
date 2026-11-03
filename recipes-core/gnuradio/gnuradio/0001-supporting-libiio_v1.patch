@@ -2,7 +2,7 @@ From 7dce029458ff7fe51cf2027e0c1c04862eb3bc48 Mon Sep 17 00:00:00 2001
 From: Toby Flynn <tflynn@redwiretechnology.com>
 Date: Tue, 30 Jun 2026 12:20:48 -0400
 Subject: [PATCH] supporting libiio_v1
-
+Upstream-Status: Denied [custom configuration]
 ---
  cmake/Modules/Findlibiio.cmake   |   2 +-
  gr-iio/CMakeLists.txt            |  12 ++

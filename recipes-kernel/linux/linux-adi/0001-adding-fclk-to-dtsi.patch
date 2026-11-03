@@ -3,6 +3,7 @@ From: Toby Flynn <tflynn@redwiretechnology.com>
 Date: Fri, 25 Jul 2025 10:46:24 -0400
 Subject: [PATCH] adding fclk to dtsi
 
+Upstream-Status: Denied [custom configuration]
 ---
  .../arm64/boot/dts/xilinx/zynqmp-clk-ccf.dtsi | 24 +++++++++++++++++++
  1 file changed, 24 insertions(+)

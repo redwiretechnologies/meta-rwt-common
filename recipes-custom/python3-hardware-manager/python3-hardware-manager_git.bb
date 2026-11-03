@@ -9,13 +9,13 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=cda32aa4f970ace97c64696c891f695e"
 
 SRC_URI = "git://git@github.com/redwiretechnologies/hardware_manager.git;protocol=ssh;branch=main"
 
-RDEPENDS:${PN} = "python3-fastui python3-typer python3-smbus python3-nicegui python3-ifaddr"
+RDEPENDS:${PN} = "python3-fastui python3-typer python3-smbus python3-nicegui python3-ifaddr python3-markdown-it-py python3-plugin-manager"
 
 # Modify these as desired
 PV = "1.0+git"
-SRCREV = "88e2cd73645f2c32678fb2178d7aa94a81e12cde"
+SRCREV = "861b1ec3bd52436652778df1731b47a610f0c96b"
 
-S = "${WORKDIR}/git"
+
 inherit python_setuptools_build_meta
 
 

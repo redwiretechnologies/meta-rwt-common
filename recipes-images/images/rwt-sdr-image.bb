@@ -2,7 +2,7 @@ SUMMARY = "An SDR development image for RWT based platforms, each platform may a
 
 LICENSE = "MIT"
 
-IMAGE_FEATURES += "splash ssh-server-openssh debug-tweaks "
+IMAGE_FEATURES += "splash ssh-server-openssh allow-empty-password allow-root-login bash-completion-pkgs dbg-pkgs dev-pkgs empty-root-password "
 EXTRA_IMAGE_FEATURES += "tools-debug tools-profile tools-sdk dev-pkgs package-management"
 
 

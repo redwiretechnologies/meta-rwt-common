@@ -5,16 +5,16 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 SRC_URI = "git://github.com/redwiretechnologies/fpga_info.git;branch=master;protocol=https \
 "
-S = "${WORKDIR}/git"
+
 SRCREV = "fe9655de8881fe5b6a366ed0d71ce4b6a60d4985"
-CLEANBROKEN="1"
+CLEANBROKEN = "1"
 
 do_compile() {
         ${CXX} ${BUILD_CXXFLAGS} fpga_info.cpp ${LDFLAGS} -o fpga_info
 }
 
 do_install() {
-  install -Dm 0755 ${WORKDIR}/git/fpga_info ${D}${bindir}/fpga_info
+  install -Dm 0755 ${B}/fpga_info ${D}${bindir}/fpga_info
 }
 
 

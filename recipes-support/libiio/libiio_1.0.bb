@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://COPYING.txt;md5=7c13b3376cea0ce68d2d2da0a1b3a72c"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 BRANCH ?= "main"
-SRCREV = "${@ "182271dc4c5333c41b0a4bd6e8c8c92fd8ad1dbb" if bb.utils.to_boolean(d.getVar('BB_NO_NETWORK')) else d.getVar('AUTOREV')}"
+SRCREV = "${@ "48893bc9008c23c5d50d21093272ade9651e52fd" if bb.utils.to_boolean(d.getVar('BB_NO_NETWORK')) else d.getVar('AUTOREV')}"
 # Just overwrite SRC_URI as we would need to delete the python bindings patch since it does not apply
 # (already fixed in 0.24) and we do not want to hardcode ';branch=master' so that we would also have to
 # remove that leaving the variable empty anyways.
@@ -15,7 +15,6 @@ SRC_URI = "git://github.com/analogdevicesinc/libiio.git;protocol=https;branch=${
            "
 UPSTREAM_CHECK_GITTAGREGEX = "v(?P<pver>\d+(\.\d+)+)"
 
-S = "${WORKDIR}/git"
 PV = "1.0+git${SRCPV}"
 
 
@@ -23,7 +22,7 @@ DEPENDS = " \
     flex-native bison-native libaio \
 "
 
-inherit cmake python3native systemd update-rc.d pkgconfig
+inherit cmake systemd update-rc.d pkgconfig
 
 EXTRA_OECMAKE += " \
 	${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', '-DWITH_SYSVINIT=on', '', d)} \
