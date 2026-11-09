@@ -6,15 +6,25 @@ Local mode runs on the Oxygen with the 'default' FPGA personality \
 running the 'griio' personality over the network."
 HOMEPAGE = "https://github.com/redwiretechnologies/gr-rwt"
 SECTION = "libs"
-# gr4-rwt is MIT. The ptest package also ships libiio's fmcomms2.xml test description (LGPL-2.1).
-LICENSE = "MIT & LGPL-2.1-only"
-LICENSE:${PN} = "MIT"
-LICENSE:${PN}-dev = "MIT"
-LICENSE:${PN}-dbg = "MIT"
-LICENSE:${PN}-staticdev = "MIT"
-LICENSE:${PN}-ptest = "MIT & LGPL-2.1-only"
-LIC_FILES_CHKSUM = "file://LICENSE;md5=b455e901ab29fac04be1efb19f3aa359 \
-                    file://${COMMON_LICENSE_DIR}/LGPL-2.1-only;md5=1a6d268fd218675ffea8be556788b780"
+# gr4-rwt is dual licensed: the terms of the Apache License 2.0 when used with Red Wire Technologies
+# hardware (LICENSE.RWT-Hardware), GPL-3.0-or-later otherwise. The ptest package also ships libiio's
+# fmcomms2.xml test description (GPL-2.0-or-later, libiio's license for its tests).
+# RWT-Hardware-Apache-2.0 is LicenseRef-RWT-Hardware-Apache-2.0 in gr4-rwt's SPDX headers. The & / | syntax is the
+# one wrynose and older take; master reads it too (with a note to use SPDX AND / OR).
+LICENSE = "(RWT-Hardware-Apache-2.0 | GPL-3.0-or-later) & GPL-2.0-or-later"
+LICENSE:${PN} = "RWT-Hardware-Apache-2.0 | GPL-3.0-or-later"
+LICENSE:${PN}-dev = "RWT-Hardware-Apache-2.0 | GPL-3.0-or-later"
+LICENSE:${PN}-dbg = "RWT-Hardware-Apache-2.0 | GPL-3.0-or-later"
+LICENSE:${PN}-staticdev = "RWT-Hardware-Apache-2.0 | GPL-3.0-or-later"
+LICENSE:${PN}-ptest = "(RWT-Hardware-Apache-2.0 | GPL-3.0-or-later) & GPL-2.0-or-later"
+NO_GENERIC_LICENSE[RWT-Hardware-Apache-2.0] = "LICENSE.RWT-Hardware"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=28055fe5236bf077a0be3b510bcc9d27 \
+                    file://LICENSE.RWT-Hardware;md5=52616a182271cf5467d27fde0f01e2ac \
+                    file://LICENSE.Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10 \
+                    file://LICENSE.GPL-3.0;md5=1c76c4cc354acaac30ed4d5eefea7245 \
+                    file://blocks/rwt/test/data/fmcomms2.xml.license;md5=d911efe847fcdcd03ecd73100bfec778 \
+                    file://${COMMON_LICENSE_DIR}/GPL-2.0-or-later;md5=fed54355545ffd980b814dab4a3b312c"
+
 
 # gr4-rwt has no public repository yet. Point GR4_RWT_GIT_URI at the one
 # you push it to, e.g. in local.conf or a bbappend:
@@ -28,7 +38,7 @@ SRC_URI = "${GR4_RWT_GIT_URI} \
            "
 
 PV = "0.5.0+git"
-SRCREV ?= "9cf27d3cd4d5b6b9e09e164a0a87b0d575ecc69b"
+SRCREV ?= "5ce96f4faf4113415c8227afb2944fee400dd8be"
 
 inherit cmake pkgconfig ptest
 

@@ -17,6 +17,8 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     libiio-tests \
     libiio-iiod \
     i2c-tools \
+    htop \
+    vim \
     parted \
     dosfstools \
     python3-flask-socketio \

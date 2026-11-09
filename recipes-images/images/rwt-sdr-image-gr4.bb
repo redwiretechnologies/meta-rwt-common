@@ -13,6 +13,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     i2c-tools \
     parted \
     vim \
+    htop \
     ninja \
     dosfstools \
     python3-flask-socketio \
