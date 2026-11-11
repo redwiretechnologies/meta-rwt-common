@@ -1,0 +1,1076 @@
+From 7dce029458ff7fe51cf2027e0c1c04862eb3bc48 Mon Sep 17 00:00:00 2001
+From: Toby Flynn <tflynn@redwiretechnology.com>
+Date: Tue, 30 Jun 2026 12:20:48 -0400
+Subject: [PATCH] supporting libiio_v1
+
+---
+ cmake/Modules/Findlibiio.cmake   |   2 +-
+ gr-iio/CMakeLists.txt            |  12 ++
+ gr-iio/lib/CMakeLists.txt        |   4 +
+ gr-iio/lib/attr_sink_impl.cc     |  33 +++++
+ gr-iio/lib/attr_sink_impl.h      |   4 +
+ gr-iio/lib/attr_source_impl.cc   | 117 +++++++++++++++++
+ gr-iio/lib/dds_control_impl.cc   |  35 ++++++
+ gr-iio/lib/dds_control_impl.h    |   4 +
+ gr-iio/lib/device_sink_impl.cc   |  74 ++++++++++-
+ gr-iio/lib/device_sink_impl.h    |  11 ++
+ gr-iio/lib/device_source_impl.cc | 208 ++++++++++++++++++++++++++++++-
+ gr-iio/lib/device_source_impl.h  |  18 +++
+ gr-iio/lib/pluto_utils.cc        |  38 +++++-
+ 13 files changed, 551 insertions(+), 9 deletions(-)
+
+diff --git a/cmake/Modules/Findlibiio.cmake b/cmake/Modules/Findlibiio.cmake
+index c37b8ab2c..12a700e60 100644
+--- a/cmake/Modules/Findlibiio.cmake
++++ b/cmake/Modules/Findlibiio.cmake
+@@ -51,7 +51,7 @@ pkg_check_modules(PC_libiio QUIET libiio)
+ 
+ find_path(
+     libiio_INCLUDE_DIR
+-    NAMES iio.h
++    NAMES iio.h iio/iio.h
+     HINTS ${PC_libiio_INCLUDE_DIRS}
+     PATHS /usr/include /usr/local/include /opt/local/include)
+ 
+diff --git a/gr-iio/CMakeLists.txt b/gr-iio/CMakeLists.txt
+index 296fd8eaf..41706c3d5 100644
+--- a/gr-iio/CMakeLists.txt
++++ b/gr-iio/CMakeLists.txt
+@@ -51,6 +51,18 @@ set(GR_PKG_IIO_EXAMPLES_DIR ${GR_PKG_DATA_DIR}/examples/iio)
+ ########################################################################
+ if(ENABLE_GR_IIO)
+ 
++    ########################################################################
++    # Setup libiio version
++    ########################################################################
++    if(libiio_FOUND)
++        if(${libiio_VERSION} LESS 1.0)
++            message(STATUS "Using libiio v0 (old version) " ${libiio_VERSION})
++        else()
++            set(LIBIIO_V1 TRUE)
++            message(STATUS "Using libiio v1 (new version) " ${libiio_VERSION})
++        endif()
++    endif(libiio_FOUND)
++
+     ########################################################################
+     # Add subdirectories
+     ########################################################################
+diff --git a/gr-iio/lib/CMakeLists.txt b/gr-iio/lib/CMakeLists.txt
+index 50c9431e0..f55facee2 100644
+--- a/gr-iio/lib/CMakeLists.txt
++++ b/gr-iio/lib/CMakeLists.txt
+@@ -51,3 +51,7 @@ endif(MSVC)
+ if(BUILD_SHARED_LIBS)
+     gr_library_foo(gnuradio-iio)
+ endif()
++
++if(LIBIIO_V1)
++    target_compile_definitions(gnuradio-iio PUBLIC LIBIIO_V1)
++endif()
+diff --git a/gr-iio/lib/attr_sink_impl.cc b/gr-iio/lib/attr_sink_impl.cc
+index 3d9b592c7..3fec5603b 100644
+--- a/gr-iio/lib/attr_sink_impl.cc
++++ b/gr-iio/lib/attr_sink_impl.cc
+@@ -91,6 +91,38 @@ void attr_sink_impl::write_attribute(pmt::pmt_t pdu)
+         value =
+             pmt::symbol_to_string(pmt::dict_ref(pdu, pmt::nth(k, keys), pmt::PMT_NIL));
+ 
++#ifdef LIBIIO_V1
++        const iio_attr* iio_attribute = nullptr;
++        switch (type) {
++        case attr_type_t::CHANNEL:
++            iio_attribute = iio_channel_find_attr(chan, attribute.c_str());
++            if (!iio_attribute)
++                ret = -EINVAL;
++            else
++                ret = iio_attr_write_string(iio_attribute, value.c_str());
++            break;
++        case attr_type_t::DEVICE:
++            iio_attribute = iio_device_find_attr(dev, attribute.c_str());
++            if (!iio_attribute)
++                ret = -EINVAL;
++            else
++                ret = iio_attr_write_string(iio_attribute, value.c_str());
++            break;
++        case attr_type_t::DEVICE_BUFFER:
++            iio_attribute = iio_device_find_attr(dev, attribute.c_str());
++            if (!iio_attribute)
++                ret = -EINVAL;
++            else
++                ret = iio_attr_write_string(iio_attribute, value.c_str());
++            break;
++        case attr_type_t::DEVICE_DEBUG:
++            iio_attribute = iio_device_find_debug_attr(dev, attribute.c_str());
++            if (!iio_attribute)
++                ret = -EINVAL;
++            else
++                ret = iio_attr_write_string(iio_attribute, value.c_str());
++            break;
++#else
+         switch (type) {
+         case attr_type_t::CHANNEL:
+             ret = iio_channel_attr_write(chan, attribute.c_str(), value.c_str());
+@@ -104,6 +136,7 @@ void attr_sink_impl::write_attribute(pmt::pmt_t pdu)
+         case attr_type_t::DEVICE_DEBUG:
+             ret = iio_device_debug_attr_write(dev, attribute.c_str(), value.c_str());
+             break;
++#endif
+         default: // case 4:
+             uint32_t address, value32;
+ 
+diff --git a/gr-iio/lib/attr_sink_impl.h b/gr-iio/lib/attr_sink_impl.h
+index 763daebab..53fce631e 100644
+--- a/gr-iio/lib/attr_sink_impl.h
++++ b/gr-iio/lib/attr_sink_impl.h
+@@ -12,7 +12,11 @@
+ 
+ #include "device_source_impl.h"
+ #include <gnuradio/iio/attr_sink.h>
++#ifdef LIBIIO_V1
++#include <iio/iio.h>
++#else
+ #include <iio.h>
++#endif
+ #include <pmt/pmt.h>
+ 
+ #include <string>
+diff --git a/gr-iio/lib/attr_source_impl.cc b/gr-iio/lib/attr_source_impl.cc
+index 402b3409c..062a018c7 100644
+--- a/gr-iio/lib/attr_source_impl.cc
++++ b/gr-iio/lib/attr_source_impl.cc
+@@ -140,6 +140,29 @@ void attr_source_impl::get_register_data(uint32_t address, int* value)
+ 
+ void attr_source_impl::get_attribute_data(const std::string& attribute, double* value)
+ {
++   #ifdef LIBIIO_V1
++    const struct iio_attr* iio_attribute = nullptr;
++
++    switch (attr_type) {
++    case attr_type_t::CHANNEL:
++        iio_attribute = iio_channel_find_attr(chan, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    case attr_type_t::DEVICE:
++        iio_attribute = iio_device_find_attr(dev, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    default:
++        iio_attribute = iio_device_find_debug_attr(dev, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    }
++    if (iio_attribute)
++        ret = iio_attr_read_double(iio_attribute, value);
++#else
+     switch (attr_type) {
+     case attr_type_t::CHANNEL:
+         ret = iio_channel_attr_read_double(chan, attribute.c_str(), value);
+@@ -151,12 +174,35 @@ void attr_source_impl::get_attribute_data(const std::string& attribute, double*
+         ret = iio_device_debug_attr_read_double(dev, attribute.c_str(), value);
+         break;
+     }
++#endif
+     attr_source_impl::check(ret);
+ }
+ 
+ void attr_source_impl::get_attribute_data(const std::string& attribute, float* value)
+ {
+     double dvalue;
++    #ifdef LIBIIO_V1
++    const iio_attr* iio_attribute = nullptr;
++    switch (attr_type) {
++    case attr_type_t::CHANNEL:
++        iio_attribute = iio_channel_find_attr(chan, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    case attr_type_t::DEVICE:
++        iio_attribute = iio_device_find_attr(dev, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    default:
++        iio_attribute = iio_device_find_debug_attr(dev, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    }
++    if (iio_attribute)
++        ret = iio_attr_read_double(iio_attribute, &dvalue);
++#else
+     switch (attr_type) {
+     case attr_type_t::CHANNEL:
+         ret = iio_channel_attr_read_double(chan, attribute.c_str(), &dvalue);
+@@ -168,12 +214,35 @@ void attr_source_impl::get_attribute_data(const std::string& attribute, float* v
+         ret = iio_device_debug_attr_read_double(dev, attribute.c_str(), &dvalue);
+         break;
+     }
++#endif
+     attr_source_impl::check(ret);
+     *value = static_cast<float>(dvalue);
+ }
+ 
+ void attr_source_impl::get_attribute_data(const std::string& attribute, long long* value)
+ {
++    #ifdef LIBIIO_V1
++    const iio_attr* iio_attribute = nullptr;
++    switch (attr_type) {
++    case attr_type_t::CHANNEL:
++        iio_attribute = iio_channel_find_attr(chan, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    case attr_type_t::DEVICE:
++        iio_attribute = iio_device_find_attr(dev, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    default:
++        iio_attribute = iio_device_find_debug_attr(dev, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    }
++    if (iio_attribute)
++        ret = iio_attr_read_longlong(iio_attribute, value);
++#else
+     switch (attr_type) {
+     case attr_type_t::CHANNEL:
+         ret = iio_channel_attr_read_longlong(chan, attribute.c_str(), value);
+@@ -185,12 +254,35 @@ void attr_source_impl::get_attribute_data(const std::string& attribute, long lon
+         ret = iio_device_debug_attr_read_longlong(dev, attribute.c_str(), value);
+         break;
+     }
++#endif
+     attr_source_impl::check(ret);
+ }
+ 
+ void attr_source_impl::get_attribute_data(const std::string& attribute, int* value)
+ {
+     long long llvalue;
++    #ifdef LIBIIO_V1
++    const iio_attr* iio_attribute = nullptr;
++    switch (attr_type) {
++    case attr_type_t::CHANNEL:
++        iio_attribute = iio_channel_find_attr(chan, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    case attr_type_t::DEVICE:
++        iio_attribute = iio_device_find_attr(dev, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    default:
++        iio_attribute = iio_device_find_debug_attr(dev, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    }
++    if (iio_attribute)
++        ret = iio_attr_read_longlong(iio_attribute, &llvalue);
++#else
+     switch (attr_type) {
+     case attr_type_t::CHANNEL:
+         ret = iio_channel_attr_read_longlong(chan, attribute.c_str(), &llvalue);
+@@ -202,6 +294,8 @@ void attr_source_impl::get_attribute_data(const std::string& attribute, int* val
+         ret = iio_device_debug_attr_read_longlong(dev, attribute.c_str(), &llvalue);
+         break;
+     }
++#endif
++
+     attr_source_impl::check(ret);
+     *value = static_cast<int>(llvalue);
+ }
+@@ -209,6 +303,28 @@ void attr_source_impl::get_attribute_data(const std::string& attribute, int* val
+ void attr_source_impl::get_attribute_data(const std::string& attribute, uint8_t* value)
+ {
+     bool bvalue;
++    #ifdef LIBIIO_V1
++    const iio_attr* iio_attribute = nullptr;
++    switch (attr_type) {
++    case attr_type_t::CHANNEL:
++        iio_attribute = iio_channel_find_attr(chan, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    case attr_type_t::DEVICE:
++        iio_attribute = iio_device_find_attr(dev, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    default:
++        iio_attribute = iio_device_find_debug_attr(dev, attribute.c_str());
++        if (!iio_attribute)
++            ret = -EINVAL;
++        break;
++    }
++    if (iio_attribute)
++        ret = iio_attr_read_bool(iio_attribute, &bvalue);
++#else
+     switch (attr_type) {
+     case attr_type_t::CHANNEL:
+         ret = iio_channel_attr_read_bool(chan, attribute.c_str(), &bvalue);
+@@ -220,6 +336,7 @@ void attr_source_impl::get_attribute_data(const std::string& attribute, uint8_t*
+         ret = iio_device_debug_attr_read_bool(dev, attribute.c_str(), &bvalue);
+         break;
+     }
++#endif
+     attr_source_impl::check(ret);
+     *value = static_cast<uint8_t>(bvalue);
+ }
+diff --git a/gr-iio/lib/dds_control_impl.cc b/gr-iio/lib/dds_control_impl.cc
+index f95488122..b254d7ace 100644
+--- a/gr-iio/lib/dds_control_impl.cc
++++ b/gr-iio/lib/dds_control_impl.cc
+@@ -116,25 +116,60 @@ void dds_control_impl::set_dds_confg(std::vector<long> frequencies,
+         chan = iio_device_get_channel(d_dev, k);
+ 
+         if (iio_channel_find_attr(chan, "raw") != NULL) {
++#ifdef LIBIIO_V1
++            const iio_attr* iio_attribute = nullptr;
+ 
++            iio_attribute = iio_channel_find_attr(chan, "frequency");
++            if (!iio_attribute)
++                ret = -EINVAL;
++            else
++                ret = iio_attr_write_longlong(iio_attribute, d_frequencies[dds_indx]);
++#else
+             ret = iio_channel_attr_write_longlong(
+                 chan, "frequency", d_frequencies[dds_indx]);
++#endif
++
+             if (ret < 0)
+                 d_logger->warn("Unable to set DDS frequency: {:d}",
+                                d_frequencies[dds_indx]);
+ 
++#ifdef LIBIIO_V1
++            iio_attribute = iio_channel_find_attr(chan, "phase");
++            if (!iio_attribute)
++                ret = -EINVAL;
++            else
++                ret = iio_attr_write_longlong(iio_attribute, d_phases[dds_indx]);
++#else
+             ret = iio_channel_attr_write_longlong(chan, "phase", d_phases[dds_indx]);
++#endif
+             if (ret < 0)
+                 d_logger->warn("Unable to set DDS phase: {:g}", d_phases[dds_indx]);
+ 
++#ifdef LIBIIO_V1
++            iio_attribute = iio_channel_find_attr(chan, "scale");
++            if (!iio_attribute)
++                ret = -EINVAL;
++            else
++                ret = iio_attr_write_double(
++                    iio_attribute, d_enabled[enable_indx] ? d_scales[dds_indx] : 0);
++#else
+             if (d_enabled[enable_indx])
+                 ret = iio_channel_attr_write_double(chan, "scale", d_scales[dds_indx]);
+             else
+                 ret = iio_channel_attr_write_double(chan, "scale", 0);
++#endif
+             if (ret < 0)
+                 d_logger->warn("Unable to set DDS scale: {:g}", d_scales[dds_indx]);
+ 
++#ifdef LIBIIO_V1
++            iio_attribute = iio_channel_find_attr(chan, "raw");
++            if (!iio_attribute)
++                ret = -EINVAL;
++            else
++                ret = iio_attr_write_longlong(iio_attribute, enable);
++#else
+             ret = iio_channel_attr_write_longlong(chan, "raw", enable);
++#endif
+             if (ret < 0)
+                 d_logger->warn("Unable to set DDS: {:d}", ret);
+ 
+diff --git a/gr-iio/lib/dds_control_impl.h b/gr-iio/lib/dds_control_impl.h
+index 9b5eb15d5..7a35bd326 100644
+--- a/gr-iio/lib/dds_control_impl.h
++++ b/gr-iio/lib/dds_control_impl.h
+@@ -12,7 +12,11 @@
+ 
+ #include "device_source_impl.h"
+ #include <gnuradio/iio/dds_control.h>
++#ifdef LIBIIO_V1
++#include <iio/iio.h>
++#else
+ #include <iio.h>
++#endif
+ #include <pmt/pmt.h>
+ 
+ #include <string>
+diff --git a/gr-iio/lib/device_sink_impl.cc b/gr-iio/lib/device_sink_impl.cc
+index 45ee72374..10f525f90 100644
+--- a/gr-iio/lib/device_sink_impl.cc
++++ b/gr-iio/lib/device_sink_impl.cc
+@@ -107,14 +107,30 @@ device_sink_impl::device_sink_impl(iio_context* ctx,
+ 
+     /* First disable all channels */
+     nb_channels = iio_device_get_channels_count(dev);
+-    for (i = 0; i < nb_channels; i++)
++#ifdef LIBIIO_V1
++    mask = iio_create_channels_mask(nb_channels);
++
++    if (!mask)
++        throw std::runtime_error("Unable to create channel mask.");
++#endif
++
++    for (i = 0; i < nb_channels; i++) {
++#ifdef LIBIIO_V1
++        iio_channel_disable(iio_device_get_channel(dev, i), mask);
++#else
+         iio_channel_disable(iio_device_get_channel(dev, i));
++#endif
++    }
+ 
+     if (channels.empty()) {
+         for (i = 0; i < nb_channels; i++) {
+             iio_channel* chn = iio_device_get_channel(dev, i);
+ 
++#ifdef LIBIIO_V1
++            iio_channel_enable(chn, mask);
++#else
+             iio_channel_enable(chn);
++#endif
+             channel_list.push_back(chn);
+         }
+     } else {
+@@ -128,18 +144,43 @@ device_sink_impl::device_sink_impl(iio_context* ctx,
+                 throw std::runtime_error("Channel not found");
+             }
+ 
++#ifdef LIBIIO_V1
++            iio_channel_enable(chn, mask);
++            if (!iio_channel_is_enabled(chn, mask))
++                throw std::runtime_error("Channel not enabled");
++#else
+             iio_channel_enable(chn);
+             if (!iio_channel_is_enabled(chn))
+                 throw std::runtime_error("Channel not enabled");
++#endif
+             channel_list.push_back(chn);
+         }
+     }
+ 
+     set_params(params);
+ 
++#ifdef LIBIIO_V1
++    buf = iio_device_get_buffer(dev, 0);
++    int err_code = iio_err(buf);
++    if (err_code)
++        throw std::runtime_error("Unable to create buffer: " + std::to_string(-err_code));
++
++    stream = iio_buffer_create_stream(buf, 4, buffer_size / sizeof(short), mask);
++    err_code = iio_err(stream);
++    if (err_code)
++        throw std::runtime_error("Unable to create stream: " + std::to_string(-err_code));
++
++    // get first block so we can copy the data to it
++    iioblock = iio_stream_get_next_block(stream);
++    err_code = iio_err(iioblock);
++    if (err_code)
++        throw std::runtime_error("Unable to create first stream block: " +
++                                 std::to_string(-err_code));
++#else
+     buf = iio_device_create_buffer(dev, buffer_size, cyclic);
+     if (!buf)
+         throw std::runtime_error("Unable to create buffer: " + std::to_string(-errno));
++#endif
+ }
+ 
+ /*
+@@ -147,12 +188,31 @@ device_sink_impl::device_sink_impl(iio_context* ctx,
+  */
+ device_sink_impl::~device_sink_impl()
+ {
++#ifdef LIBIIO_V1
++    iio_stream_destroy(stream);
++    //iio_buffer_destroy(buf);
++    iio_channels_mask_destroy(mask);
++#else
+     iio_buffer_destroy(buf);
++#endif
+     device_source_impl::remove_ctx_history(ctx, destroy_ctx);
+ }
+ 
+ void device_sink_impl::channel_write(const iio_channel* chn, const void* src, size_t len)
+ {
++#ifdef LIBIIO_V1
++    buf_stream = iio_block_get_buffer_stream(iioblock);
++    const iio_channels_mask* hw_mask = iio_buffer_stream_get_channels_mask(buf_stream);
++    uintptr_t dst_ptr, src_ptr = (uintptr_t)src, end = src_ptr + len;
++    unsigned int length = iio_channel_get_data_format(chn)->length / 8;
++    uintptr_t buf_end = (uintptr_t)iio_block_end(iioblock);
++    ptrdiff_t buf_step = iio_device_get_sample_size(dev, hw_mask) * (interpolation + 1);
++
++    for (dst_ptr = (uintptr_t)iio_block_first(iioblock, chn);
++         dst_ptr < buf_end && src_ptr + length <= end;
++         dst_ptr += buf_step, src_ptr += length)
++        iio_channel_convert_inverse(chn, (void*)dst_ptr, (const void*)src_ptr);
++#else
+     uintptr_t dst_ptr, src_ptr = (uintptr_t)src, end = src_ptr + len;
+     unsigned int length = iio_channel_get_data_format(chn)->length / 8;
+     uintptr_t buf_end = (uintptr_t)iio_buffer_end(buf);
+@@ -162,6 +222,7 @@ void device_sink_impl::channel_write(const iio_channel* chn, const void* src, si
+          dst_ptr < buf_end && src_ptr + length <= end;
+          dst_ptr += buf_step, src_ptr += length)
+         iio_channel_convert_inverse(chn, (void*)dst_ptr, (const void*)src_ptr);
++#endif
+ }
+ 
+ void device_sink_impl::set_len_tag_key(const std::string& len_tag_key)
+@@ -210,14 +271,25 @@ int device_sink_impl::work(int noutput_items,
+     }
+ 
+     if (interpolation >= 1) {
++#ifdef LIBIIO_V1
++        ptrdiff_t len =
++            (intptr_t)iio_block_end(iioblock) - (intptr_t)iio_block_start(iioblock);
++        memset(iio_block_start(iioblock), 0, len);
++#else
+         ptrdiff_t len = (intptr_t)iio_buffer_end(buf) - (intptr_t)iio_buffer_start(buf);
+         memset(iio_buffer_start(buf), 0, len);
++#endif
+     }
+ 
+     for (unsigned int i = 0; i < input_items.size(); i++)
+         channel_write(channel_list[i], input_items[i], noutput_items * sizeof(short));
+ 
++#ifdef LIBIIO_V1
++    iioblock = iio_stream_get_next_block(stream);
++    ret = -iio_err(iioblock);
++#else
+     ret = iio_buffer_push(buf);
++#endif
+     if (ret < 0) {
+         char buf[256];
+         iio_strerror(-ret, buf, sizeof(buf));
+diff --git a/gr-iio/lib/device_sink_impl.h b/gr-iio/lib/device_sink_impl.h
+index dd2d62590..53be2e8d1 100644
+--- a/gr-iio/lib/device_sink_impl.h
++++ b/gr-iio/lib/device_sink_impl.h
+@@ -11,7 +11,12 @@
+ #define INCLUDED_IIO_DEVICE_SINK_IMPL_H
+ 
+ #include <gnuradio/iio/device_sink.h>
++
++#ifdef LIBIIO_V1
++#include <iio/iio.h>
++#else
+ #include <iio.h>
++#endif
+ 
+ #include <string>
+ #include <vector>
+@@ -29,6 +34,12 @@ protected:
+     iio_context* ctx;
+     iio_device *dev, *phy;
+     iio_buffer* buf;
++#ifdef LIBIIO_V1
++    iio_buffer_stream* buf_stream;
++    iio_stream* stream;
++    const iio_block* iioblock;
++    iio_channels_mask* mask;
++#endif
+     std::vector<iio_channel*> channel_list;
+     unsigned int interpolation;
+     unsigned int buffer_size;
+diff --git a/gr-iio/lib/device_source_impl.cc b/gr-iio/lib/device_source_impl.cc
+index 4ce14634f..cf52de2df 100644
+--- a/gr-iio/lib/device_source_impl.cc
++++ b/gr-iio/lib/device_source_impl.cc
+@@ -54,30 +54,98 @@ device_source::sptr device_source::make_from(iio_context* ctx,
+         ctx, false, device, channels, device_phy, params, buffer_size, decimation);
+ }
+ 
++#ifdef LIBIIO_V1
++int device_source_impl::device_identify_filename(const struct iio_device* dev,
++                                                 const char* filename,
++                                                 struct iio_channel** chn,
++                                                 const struct iio_attr** attr)
++{
++    unsigned int chan_count = iio_device_get_channels_count(dev);
++    unsigned int i;
++    const struct iio_attr* iio_attribute;
++    const char* current_filename;
++
++    // Check the channel attributes
++    for (i = 0; i < chan_count; ++i) {
++        struct iio_channel* ch = iio_device_get_channel(dev, i);
++        unsigned int nb_attrs = iio_channel_get_attrs_count(ch);
++        unsigned int j;
++
++        for (j = 0; j < nb_attrs; ++j) {
++            iio_attribute = iio_channel_get_attr(ch, j);
++            current_filename = iio_attr_get_filename(iio_attribute);
++            if (!strcmp(current_filename, filename)) {
++                *attr = iio_attribute;
++                *chn = ch;
++                return 0;
++            }
++        }
++    }
++
++    // Check the device attributes
++    unsigned int device_attrs_count = iio_device_get_attrs_count(dev);
++    for (i = 0; i < device_attrs_count; ++i) {
++        iio_attribute = iio_device_get_attr(dev, i);
++        current_filename = iio_attr_get_filename(iio_attribute);
++        if (!strcmp(current_filename, filename)) {
++            *attr = iio_attribute;
++            *chn = NULL;
++            return 0;
++        }
++    }
++
++    // Check for device debug attributes
++    unsigned int device_debug_attrs_count = iio_device_get_debug_attrs_count(dev);
++    for (i = 0; i < device_debug_attrs_count; ++i) {
++        iio_attribute = iio_device_get_debug_attr(dev, i);
++        current_filename = iio_attr_get_filename(iio_attribute);
++        if (!strcmp(current_filename, filename)) {
++            *attr = iio_attribute;
++            *chn = NULL;
++            return 0;
++        }
++    }
++
++    return -EINVAL;
++}
++#endif
++
+ void device_source_impl::set_params(iio_device* phy, const iio_param_vec_t& params)
+ {
+     static gr::logger logger("device_source_impl::set_params");
+ 
+     for (auto& param : params) {
+         iio_channel* chn = NULL;
++#ifdef LIBIIO_V1
++        const iio_attr* attr = NULL;
++#else
+         const char* attr = NULL;
++#endif
+         int ret;
+ 
+         std::string key = param.first;
+         std::string val = param.second;
+ 
++#ifdef LIBIIO_V1
++        ret = device_identify_filename(phy, key.c_str(), &chn, &attr);
++#else
+         ret = iio_device_identify_filename(phy, key.c_str(), &chn, &attr);
++#endif
+         if (ret) {
+             logger.warn("set_params: Parameter not recognized: {}", key);
+             continue;
+         }
+ 
++#ifdef LIBIIO_V1
++        ret = iio_attr_write_string(attr, val.c_str());
++#else
+         if (chn)
+             ret = iio_channel_attr_write(chn, attr, val.c_str());
+         else if (iio_device_find_attr(phy, attr))
+             ret = iio_device_attr_write(phy, attr, val.c_str());
+         else
+             ret = iio_device_debug_attr_write(phy, attr, val.c_str());
++#endif
+         if (ret < 0) {
+             logger.warn(
+                 "set_params: Unable to write attribute {:s}: {:d} {:s}", key, ret, val);
+@@ -104,11 +172,31 @@ void device_source_impl::set_buffer_size(unsigned int _buffer_size)
+     std::unique_lock<std::mutex> lock(iio_mutex);
+ 
+     if (buf && this->buffer_size != _buffer_size) {
++#ifdef LIBIIO_V1
++        iio_stream_destroy(stream);
++        //iio_buffer_destroy(buf);
++        iio_channels_mask_destroy(mask);
++
++        int channels_count = iio_device_get_channels_count(dev);
++        mask = iio_create_channels_mask(channels_count);
++        buf = iio_device_get_buffer(dev, 0);
++        int err = iio_err(buf);
++        if (err)
++            throw std::runtime_error("Unable to get buffer! Error code: " +
++                                     std::to_string(err));
++
++        stream = iio_buffer_create_stream(buf, 4, _buffer_size / sizeof(short),mask);
++        err = iio_err(stream);
++        if (err)
++            throw std::runtime_error("Unable to create stream! Error code: " +
++                                     std::to_string(err));
++#else
+         iio_buffer_destroy(buf);
+ 
+         buf = iio_device_create_buffer(dev, _buffer_size, false);
+         if (!buf)
+             throw std::runtime_error("Unable to create buffer!\n");
++#endif
+     }
+ 
+     this->buffer_size = _buffer_size;
+@@ -133,6 +221,9 @@ iio_context* device_source_impl::get_context(const std::string& uri)
+         }
+     }
+ 
++#ifdef LIBIIO_V1
++    ctx = iio_create_context(nullptr, uri.c_str());
++#else
+     if (uri.empty()) {
+         ctx = iio_create_default_context();
+         if (!ctx)
+@@ -145,6 +236,8 @@ iio_context* device_source_impl::get_context(const std::string& uri)
+         if (!ctx)
+             ctx = iio_create_network_context(uri.c_str());
+     }
++#endif
++
+     // Save context info for future checks
+     ctxInfo ci = { uri, ctx, 1 };
+     contexts.push_back(ci);
+@@ -171,6 +264,11 @@ device_source_impl::device_source_impl(iio_context* ctx,
+       d_len_tag_key(pmt::PMT_NIL),
+       ctx(ctx),
+       buf(NULL),
++#ifdef LIBIIO_V1
++      stream(NULL),
++      iioblock(NULL),
++      mask(NULL),
++#endif
+       buffer_size(buffer_size),
+       decimation(decimation),
+       destroy_ctx(destroy_ctx),
+@@ -191,17 +289,31 @@ device_source_impl::device_source_impl(iio_context* ctx,
+ 
+     /* First disable all channels */
+     nb_channels = iio_device_get_channels_count(dev);
++#ifdef LIBIIO_V1
++    mask = iio_create_channels_mask(nb_channels);
++    for (i = 0; i < nb_channels; i++)
++        iio_channel_disable(iio_device_get_channel(dev, i), mask);
++#else
+     for (i = 0; i < nb_channels; i++)
+         iio_channel_disable(iio_device_get_channel(dev, i));
++#endif
+ 
+     if (channels.empty()) {
+         for (i = 0; i < nb_channels; i++) {
+             iio_channel* chn = iio_device_get_channel(dev, i);
+ 
++#ifdef LIBIIO_V1
++            iio_channel_enable(chn, mask);
++#else
+             iio_channel_enable(chn);
++#endif
+             channel_list.push_back(chn);
+         }
+     } else {
++#ifdef LIBIIO_V1
++        iio_channels_mask_destroy(mask);
++        mask = iio_create_channels_mask(channels.size());
++#endif
+         for (std::vector<std::string>::const_iterator it = channels.begin();
+              it != channels.end();
+              ++it) {
+@@ -212,7 +324,11 @@ device_source_impl::device_source_impl(iio_context* ctx,
+                 throw std::runtime_error("Channel not found");
+             }
+ 
++#ifdef LIBIIO_V1
++            iio_channel_enable(chn, mask);
++#else
+             iio_channel_enable(chn);
++#endif
+             channel_list.push_back(chn);
+         }
+     }
+@@ -246,6 +362,12 @@ void device_source_impl::remove_ctx_history(iio_context* ctx_from_block, bool de
+  */
+ device_source_impl::~device_source_impl()
+ {
++#ifdef LIBIIO_V1
++    iio_stream_destroy(stream);
++    //iio_buffer_destroy(buf);
++    iio_channels_mask_destroy(mask);
++#endif
++
+     // Make sure this is the last open block with a given context
+     // before removing the context
+     remove_ctx_history(ctx, destroy_ctx);
+@@ -253,6 +375,19 @@ device_source_impl::~device_source_impl()
+ 
+ void device_source_impl::channel_read(const iio_channel* chn, void* dst, size_t len)
+ {
++#ifdef LIBIIO_V1
++    buf_stream = iio_block_get_buffer_stream(iioblock);
++    uintptr_t src_ptr, dst_ptr = (uintptr_t)dst, end = dst_ptr + len;
++    unsigned int length = iio_channel_get_data_format(chn)->length / 8;
++    uintptr_t buf_end = (uintptr_t)iio_block_end(iioblock);
++    ptrdiff_t buf_step =
++        iio_device_get_sample_size(dev, iio_buffer_stream_get_channels_mask(buf_stream));
++
++    for (src_ptr = (uintptr_t)iio_block_first(iioblock, chn) + byte_offset;
++         src_ptr < buf_end && dst_ptr + length <= end;
++         src_ptr += buf_step, dst_ptr += length)
++        iio_channel_convert(chn, (void*)dst_ptr, (const void*)src_ptr);
++#else
+     uintptr_t src_ptr, dst_ptr = (uintptr_t)dst, end = dst_ptr + len;
+     unsigned int length = iio_channel_get_data_format(chn)->length / 8;
+     uintptr_t buf_end = (uintptr_t)iio_buffer_end(buf);
+@@ -262,6 +397,7 @@ void device_source_impl::channel_read(const iio_channel* chn, void* dst, size_t
+          src_ptr < buf_end && dst_ptr + length <= end;
+          src_ptr += buf_step, dst_ptr += length)
+         iio_channel_convert(chn, (void*)dst_ptr, (const void*)src_ptr);
++#endif
+ }
+ 
+ int device_source_impl::work(int noutput_items,
+@@ -272,6 +408,25 @@ int device_source_impl::work(int noutput_items,
+ 
+     // Check if we've processed what we have first
+     if (!items_in_buffer) {
++#ifdef LIBIIO_V1
++        iioblock = iio_stream_get_next_block(stream);
++        buf_stream = iio_block_get_buffer_stream(iioblock);
++        ret = -iio_err(iioblock);
++        if (ret < 0) {
++            /* -EBADF happens when the buffer is cancelled */
++            if (ret != -EBADF) {
++
++                char buf[256];
++                iio_strerror(-ret, buf, sizeof(buf));
++                d_logger->warn("Unable to get next block: {:s}", buf);
++            }
++            return -1;
++        }
++
++        items_in_buffer =
++            (unsigned long)this->buffer_size /
++            iio_device_get_sample_size(dev,  iio_buffer_stream_get_channels_mask(buf_stream));
++#else
+         ret = iio_buffer_refill(buf);
+         if (ret < 0) {
+             /* -EBADF happens when the buffer is cancelled */
+@@ -285,6 +440,7 @@ int device_source_impl::work(int noutput_items,
+         }
+ 
+         items_in_buffer = (unsigned long)ret / iio_buffer_step(buf);
++#endif
+         if (!items_in_buffer)
+             return 0;
+ 
+@@ -314,7 +470,12 @@ int device_source_impl::work(int noutput_items,
+         channel_read(channel_list[i], output_items[i], items * sizeof(short));
+ 
+     items_in_buffer -= items;
++#ifdef LIBIIO_V1
++    byte_offset +=
++        items * iio_device_get_sample_size(dev,  iio_buffer_stream_get_channels_mask(buf_stream));
++#else
+     byte_offset += items * iio_buffer_step(buf);
++#endif
+ 
+     return (int)items;
+ }
+@@ -325,10 +486,24 @@ bool device_source_impl::start()
+     byte_offset = 0;
+     thread_stopped = false;
+ 
++#ifdef LIBIIO_V1
++    buf = iio_device_get_buffer(dev, 0);
++    int res = iio_err(buf);
++    if (res) {
++        throw std::runtime_error("Unable to create buffer! " + std::to_string(res));
++    }
++
++    stream = iio_buffer_create_stream(buf, 4, this->buffer_size / sizeof(unsigned long),mask);
++    res = iio_err(stream);
++    if (res) {
++        throw std::runtime_error("Unable to create stream! " + std::to_string(res));
++    }
++#else
+     buf = iio_device_create_buffer(dev, buffer_size, false);
+     if (!buf) {
+         throw std::runtime_error("Unable to create buffer!\n");
+     }
++#endif
+ 
+     return !!buf;
+ }
+@@ -337,13 +512,13 @@ bool device_source_impl::stop()
+ {
+     thread_stopped = true;
+ 
+-    if (buf)
+-        iio_buffer_cancel(buf);
++    //if (buf)
++    //    iio_buffer_cancel(buf);
+ 
+-    if (buf) {
+-        iio_buffer_destroy(buf);
+-        buf = NULL;
+-    }
++   // if (buf) {
++   //     iio_buffer_destroy(buf);
++   //     buf = NULL;
++   // }
+ 
+     return true;
+ }
+@@ -379,7 +554,12 @@ bool device_source_impl::load_fir_filter(std::string& filter, iio_device* phy)
+     ifs.read(buffer, length);
+     ifs.close();
+ 
++#ifdef LIBIIO_V1
++    const iio_attr* iio_attribute = iio_device_find_attr(phy, "filter_fir_config");
++    int ret = iio_attr_write_raw(iio_attribute, buffer, length);
++#else
+     int ret = iio_device_attr_write_raw(phy, "filter_fir_config", buffer, length);
++#endif
+ 
+     delete[] buffer;
+     return ret > 0;
+@@ -406,7 +586,15 @@ int device_source_impl::handle_decimation_interpolation(unsigned long samplerate
+     if (chan == NULL)
+         return -1; // Channel doesn't exist so the dec/int filters probably don't exist
+ 
++#ifdef LIBIIO_V1
++    const iio_attr* iio_attribute = iio_channel_find_attr(chan, an.c_str());
++    if (!iio_attribute)
++        ret = -EINVAL;
++    else
++        ret = iio_attr_read_raw(iio_attribute, buff, sizeof(buff));
++#else
+     ret = iio_channel_attr_read(chan, an.c_str(), buff, sizeof(buff));
++#endif
+     if (ret < 0)
+         return -1; // Channel attribute does not exist so no dec/int filter exist
+ 
+@@ -416,7 +604,15 @@ int device_source_impl::handle_decimation_interpolation(unsigned long samplerate
+     if (disable_dec)
+         min = max;
+ 
++#ifdef LIBIIO_V1
++    iio_attribute = iio_channel_find_attr(chan, "sampling_frequency");
++    if (!iio_attribute)
++        return -EINVAL;
++    else
++        ret = iio_attr_write_longlong(iio_attribute, min);
++#else
+     ret = iio_channel_attr_write_longlong(chan, "sampling_frequency", min);
++#endif
+     if (ret < 0) {
+         log.warn("Unable to write attribute sampling_frequency!");
+     }
+diff --git a/gr-iio/lib/device_source_impl.h b/gr-iio/lib/device_source_impl.h
+index 35bc648ee..176b2160f 100644
+--- a/gr-iio/lib/device_source_impl.h
++++ b/gr-iio/lib/device_source_impl.h
+@@ -11,7 +11,12 @@
+ #define INCLUDED_IIO_DEVICE_SOURCE_IMPL_H
+ 
+ #include <gnuradio/iio/device_source.h>
++
++#ifdef LIBIIO_V1
++#include <iio/iio.h>
++#else
+ #include <iio.h>
++#endif
+ 
+ #include <condition_variable>
+ #include <mutex>
+@@ -53,10 +58,23 @@ private:
+ 
+     void refill_thread();
+ 
++#ifdef LIBIIO_V1
++    static int device_identify_filename(const struct iio_device* dev,
++                                        const char* filename,
++                                        struct iio_channel** chn,
++                                        const struct iio_attr** attr);
++#endif
++
+ protected:
+     iio_context* ctx;
+     iio_device *dev, *phy;
+     iio_buffer* buf;
++#ifdef LIBIIO_V1
++    iio_buffer_stream* buf_stream;
++    iio_stream* stream;
++    const iio_block* iioblock;
++    iio_channels_mask* mask;
++#endif
+     std::vector<iio_channel*> channel_list;
+     unsigned int buffer_size;
+     unsigned int decimation;
+diff --git a/gr-iio/lib/pluto_utils.cc b/gr-iio/lib/pluto_utils.cc
+index 4139d48ed..448106d89 100644
+--- a/gr-iio/lib/pluto_utils.cc
++++ b/gr-iio/lib/pluto_utils.cc
+@@ -9,10 +9,14 @@
+ 
+ #include <gnuradio/iio/pluto_utils.h>
+ #include <gnuradio/logger.h>
++#include <stdexcept>
+ 
++#ifdef LIBIIO_V1
++#include <iio/iio.h>
++#else
+ #include <iio.h>
++#endif
+ 
+-#include <stdexcept>
+ 
+ namespace gr {
+ namespace iio {
+@@ -20,6 +24,37 @@ namespace iio {
+ std::string get_pluto_uri()
+ {
+     auto logger = gr::logger("pluto_utils::get_pluto_uri");
++#ifdef LIBIIO_V1
++    struct iio_scan* scan = iio_scan(nullptr, "usb");
++    int scan_error = iio_err(scan);
++    if (scan_error) {
++        // The scan is NOT valid
++        throw std::runtime_error("Unable to perform iio scan. Error code: " +
++                                 std::to_string(scan_error));
++    }
++
++    size_t scan_count = iio_scan_get_results_count(scan);
++    if (scan_count == 0) {
++        iio_scan_destroy(scan);
++        throw std::runtime_error("No Pluto device found");
++    }
++
++    if (scan_count > 1) {
++        logger.info("More than one Pluto found:");
++
++        for (size_t i = 0; i < scan_count; ++i) {
++            logger.info("\t{:d}: {:s} [{:s}]",
++                        i,
++                        iio_scan_get_description(scan, i),
++                        iio_scan_get_uri(scan, i));
++        }
++
++        logger.info("We will use the first one.");
++    }
++
++    std::string uri(iio_scan_get_uri(scan, 0));
++    iio_scan_destroy(scan);
++#else
+     iio_scan_context* ctx = iio_create_scan_context("usb", 0);
+     if (!ctx)
+         throw std::runtime_error("Unable to create scan context");
+@@ -53,6 +88,7 @@ std::string get_pluto_uri()
+     std::string uri(iio_context_info_get_uri(info[0]));
+     iio_context_info_list_free(info);
+     iio_scan_context_destroy(ctx);
++#endif
+ 
+     return uri;
+ }
