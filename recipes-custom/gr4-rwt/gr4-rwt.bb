@@ -38,7 +38,7 @@ SRC_URI = "${GR4_RWT_GIT_URI} \
            "
 
 PV = "0.5.0+git"
-SRCREV ?= "5ce96f4faf4113415c8227afb2944fee400dd8be"
+SRCREV ?= "e437a99e3ef4721da61f9d20f69773c477882a14"
 
 inherit cmake pkgconfig ptest
 
@@ -100,6 +100,6 @@ do_install_ptest() {
         install -m 0755 ${t} ${D}${PTEST_PATH}/tests/
     done
     install -m 0644 ${S}/blocks/rwt/test/data/fmcomms2.xml ${D}${PTEST_PATH}/data/
-    install -m 0644 ${S}/examples/oxygen_repeater.grc ${D}${PTEST_PATH}/examples/
+    install -m 0644 ${S}/examples/rwt_repeater.grc ${D}${PTEST_PATH}/examples/
     sed -i -e 's#@LIBDIR@#${libdir}#g' ${D}${PTEST_PATH}/run-ptest
 }

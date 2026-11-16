@@ -1,0 +1,26 @@
+From: meta-rwt-common
+Subject: [PATCH] lsfd: parenthesize compound literal passed to bsearch()
+
+glibc >= 2.43 (e.g. Ubuntu 26.04 hosts) defines bsearch() as a
+function-like macro. The comma inside the designated-initializer
+compound literal is then seen as a macro argument separator, giving
+"macro 'bsearch' passed 6 arguments, but takes just 5". Wrapping the
+argument in parentheses fixes it with no behaviour change.
+
+Upstream-Status: Inappropriate [host build fix; fixed in newer util-linux]
+
+---
+ misc-utils/lsfd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/misc-utils/lsfd.c
++++ b/misc-utils/lsfd.c
+@@ -1569,7 +1569,7 @@ static void mark_poll_fds_as_multiplexed(char *buf,
+ 		struct file *file = list_entry(f, struct file, files);
+ 		if (is_opened_file(file) && !file->multiplexed) {
+ 			int fd = file->association;
+-			if (bsearch(&(struct pollfd){.fd = fd,}, local.iov_base,
++			if (bsearch((&(struct pollfd){.fd = fd,}), local.iov_base,
+ 				    nfds, sizeof(struct pollfd), pollfdcmp))
+ 				file->multiplexed = 1;
+ 		}

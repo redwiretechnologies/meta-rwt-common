@@ -3,10 +3,11 @@ HOMEPAGE = "https://wiki.analog.com/resources/tools-software/linux-software/libi
 SECTION = "libs"
 LICENSE = "LGPL-2.1-or-later"
 LIC_FILES_CHKSUM = "file://COPYING.txt;md5=7c13b3376cea0ce68d2d2da0a1b3a72c"
-
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
-BRANCH ?= "main"
-SRCREV = "${@ "48893bc9008c23c5d50d21093272ade9651e52fd" if bb.utils.to_boolean(d.getVar('BB_NO_NETWORK')) else d.getVar('AUTOREV')}"
+BRANCH ?= "libiio-v1.0"
+# Pinned for reproducible builds (tip of libiio-v1.0, 2026-11-13).
+SRCREV = "f0a4be99624eb2dfe8b153b33dc0fb9b8a9d5f9d"
+
 # Just overwrite SRC_URI as we would need to delete the python bindings patch since it does not apply
 # (already fixed in 0.24) and we do not want to hardcode ';branch=master' so that we would also have to
 # remove that leaving the variable empty anyways.
@@ -22,7 +23,7 @@ DEPENDS = " \
     flex-native bison-native libaio \
 "
 
-inherit cmake systemd update-rc.d pkgconfig
+inherit cmake python3native systemd update-rc.d pkgconfig
 
 EXTRA_OECMAKE += " \
 	${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', '-DWITH_SYSVINIT=on', '', d)} \
