@@ -44,7 +44,7 @@ index 296fd8eaf..41706c3d5 100644
 +    # Setup libiio version
 +    ########################################################################
 +    if(libiio_FOUND)
-+        if(${libiio_VERSION} LESS 1.0)
++        if(libiio_VERSION VERSION_LESS 1.0)
 +            message(STATUS "Using libiio v0 (old version) " ${libiio_VERSION})
 +        else()
 +            set(LIBIIO_V1 TRUE)
