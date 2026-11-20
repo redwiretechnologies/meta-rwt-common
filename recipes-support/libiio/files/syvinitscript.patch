@@ -1,3 +1,4 @@
+Upstream-Status: Backport
 diff --git a/iiod/init/iiod.init.cmakein b/iiod/init/iiod.init.cmakein
 index 2799925..9ca51d4 100644
 --- a/iiod/init/iiod.init.cmakein

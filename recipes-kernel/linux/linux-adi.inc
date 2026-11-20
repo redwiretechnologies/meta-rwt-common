@@ -25,9 +25,8 @@ SRCREV_FORMAT = "machine"
 
 require recipes-kernel/linux/linux-yocto.inc
 
-LINUX_MB_INC = ""
-LINUX_MB_INC:microblaze = "linux-microblaze.inc"
-require ${LINUX_MB_INC}
+# meta-xilinx (wrynose) removed Linux support for classic MicroBlaze
+# (linux-microblaze.inc, commit 072ddf1ed), so there is no MicroBlaze include here.
 
 DESCRIPTION = "Xilinx Kernel"
 LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"

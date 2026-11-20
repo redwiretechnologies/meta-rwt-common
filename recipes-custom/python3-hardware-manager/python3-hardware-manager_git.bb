@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=cda32aa4f970ace97c64696c891f695e"
 
 SRC_URI = "git://git@github.com/redwiretechnologies/hardware_manager.git;protocol=ssh;branch=main"
 
-RDEPENDS:${PN} = "python3-fastui python3-typer python3-smbus python3-nicegui python3-ifaddr python3-markdown-it-py python3-plugin-manager"
+RDEPENDS:${PN} = "python3-fastui python3-typer python3-smbus python3-nicegui python3-ifaddr python3-markdown-it-py python3-plugin-manager python3-shellingham"
 
 # Modify these as desired
 PV = "1.0+git"
