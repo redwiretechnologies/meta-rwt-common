@@ -3,6 +3,10 @@ From: Toby Flynn <tflynn@redwiretechnology.com>
 Date: Tue, 30 Jun 2026 12:20:48 -0400
 Subject: [PATCH] supporting libiio_v1
 
+Add libiio v1 API support to gr-iio (maint-3.10).
+
+Upstream-Status: Pending
+
 ---
  cmake/Modules/Findlibiio.cmake   |   2 +-
  gr-iio/CMakeLists.txt            |  12 ++

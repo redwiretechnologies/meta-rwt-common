@@ -1,6 +1,7 @@
 SUMMARY = "Analog Devices python interfaces for hardware with Industrial I/O drivers"
 LICENSE = "ADI-BSD"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=d02cc2377387c6fa1ffe41e81f191cf0"
+NO_GENERIC_LICENSE[ADI-BSD] = "LICENSE"
 
 BRANCH ?= "main"
 SRCREV = "${@ "6b33acdfdb9910e89d85243fd584c136142587a6" if bb.utils.to_boolean(d.getVar('BB_NO_NETWORK')) else d.getVar('AUTOREV')}"

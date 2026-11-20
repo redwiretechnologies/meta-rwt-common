@@ -14,3 +14,9 @@ SRCREV = "9f9011e4fefb28ccf0a5877973763a68c3618794"
 
 
 
+# gr-rwt's CMake exports absolute recipe-sysroot paths (libiio.so, libad9361.so, ...)
+# in INTERFACE_LINK_LIBRARIES, which fails the buildpaths QA check. Make them
+# relative to CMAKE_SYSROOT (empty on target, the SDK sysroot when cross-compiling).
+do_install:append() {
+    sed -i -e "s#${RECIPE_SYSROOT}#\${CMAKE_SYSROOT}#g" ${D}${libdir}/cmake/rwt/*.cmake
+}
